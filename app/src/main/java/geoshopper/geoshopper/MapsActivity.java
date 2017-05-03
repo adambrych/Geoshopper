@@ -80,7 +80,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
 
-
     }
 
 
@@ -167,7 +166,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 if(id == 0){
                     findViewById(R.id.search).setVisibility(View.VISIBLE);
-                    //onOptionsItemSelected((MenuItem)findViewById(android.R.id.home));
+                    mDrawerLayout.closeDrawer(mDrawerList);
                 }
 
                 //Toast.makeText(MapsActivity.this, "Time for an upgrade!", Toast.LENGTH_SHORT).show();
@@ -222,10 +221,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-        System.out.println("onOptionsItemSelected " + id + " " + android.R.id.home);
-        if (id == R.id.action_settings) {
-            return true;
-        }
         // Activate the navigation drawer toggle
         if (mDrawerToggle.onOptionsItemSelected(item)) {
             return true;
@@ -248,13 +243,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            Address address = addressList.get(0);
-            LatLng latLng = new LatLng(address.getLatitude(), address.getLongitude());
-            //marker.remove();
-            marker = mMap.addMarker(new MarkerOptions().position(latLng).title("Marker"));
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+            if(addressList.size()>0) {
+                Address address = addressList.get(0);
+                LatLng latLng = new LatLng(address.getLatitude(), address.getLongitude());
+                if (marker != null) marker.remove();
+                marker = mMap.addMarker(new MarkerOptions().position(latLng).title("Tu jestes"));
+                mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+            }
         }
-
+        findViewById(R.id.search).setVisibility(View.INVISIBLE);
     }
 
     private String getUrl(LatLng origin, LatLng dest) {
