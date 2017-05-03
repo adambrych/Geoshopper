@@ -2,6 +2,7 @@ package geoshopper.geoshopper;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
@@ -10,9 +11,18 @@ import android.os.AsyncTask;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBarActivity;
+import android.support.v7.app.ActionBarDrawerToggle;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.ListView;
+import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -37,43 +47,43 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.logging.Logger;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
+public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private GoogleMap mMap;
     private Marker marker;
     private ArrayList<LatLng> MarkerPoints;
+    private ListView mDrawerList;
+    private ArrayAdapter<String> mAdapter;
+    private ActionBarDrawerToggle mDrawerToggle;
+    private DrawerLayout mDrawerLayout;
+    private String mActivityTitle;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
         MarkerPoints = new ArrayList<>();
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
+        //Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
+               .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
-    }
+        mDrawerList = (ListView)findViewById(R.id.navList);
+        mDrawerLayout = (DrawerLayout)findViewById(R.id.drawer_layout);
+        mActivityTitle = getTitle().toString();
 
-    public void onSearch(View view){
-        EditText location_tf = (EditText)findViewById(R.id.TFaddress);
-        String location = location_tf.getText().toString();
-        if(location != null && location != ""){
-            Geocoder geocoder = new Geocoder(this);
-            List<Address> addressList = null;
-            try {
-                addressList = geocoder.getFromLocationName(location,1);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            Address address = addressList.get(0);
-            LatLng latLng = new LatLng(address.getLatitude(), address.getLongitude());
-            //marker.remove();
-            marker = mMap.addMarker(new MarkerOptions().position(latLng).title("Marker"));
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-        }
+        addDrawerItems();
+        setupDrawer();
+
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        getSupportActionBar().setHomeButtonEnabled(true);
+
+
+
 
     }
+
+
 
     /**
      * Manipulates the map once available.
@@ -147,8 +157,104 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         });
     }
 
-    private Location getMyLocation(){
-        return mMap.getMyLocation();
+    private void addDrawerItems() {
+        System.out.println("addDrawerItems");
+        String[] osArray = { "Szukaj ręcznie" };
+        mAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, osArray);
+        mDrawerList.setAdapter(mAdapter);
+        mDrawerList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                if(id == 0){
+                    findViewById(R.id.search).setVisibility(View.VISIBLE);
+                    //onOptionsItemSelected((MenuItem)findViewById(android.R.id.home));
+                }
+
+                //Toast.makeText(MapsActivity.this, "Time for an upgrade!", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void setupDrawer() {
+        System.out.println("setupDrawer");
+        mDrawerToggle = new ActionBarDrawerToggle(this, mDrawerLayout,
+                R.string.drawer_open, R.string.drawer_close) {
+
+            /** Called when a drawer has settled in a completely open state. */
+            public void onDrawerOpened(View drawerView) {
+                System.out.println("");
+                super.onDrawerOpened(drawerView);
+                getSupportActionBar().setTitle("Menu");
+                invalidateOptionsMenu(); // creates call to onPrepareOptionsMenu()
+            }
+
+            /** Called when a drawer has settled in a completely closed state. */
+            public void onDrawerClosed(View view) {
+                System.out.println("onDrawerClosed");
+                super.onDrawerClosed(view);
+                getSupportActionBar().setTitle(mActivityTitle);
+                invalidateOptionsMenu(); // creates call to onPrepareOptionsMenu()
+            }
+        };
+        mDrawerToggle.setDrawerIndicatorEnabled(true);
+        mDrawerLayout.addDrawerListener(mDrawerToggle);
+    }
+
+    @Override
+    protected void onPostCreate(Bundle savedInstanceState) {
+        System.out.println("onPostCreate");
+        super.onPostCreate(savedInstanceState);
+        mDrawerToggle.syncState();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        System.out.println("onConfigurationChanged");
+        super.onConfigurationChanged(newConfig);
+        mDrawerToggle.onConfigurationChanged(newConfig);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        System.out.println("onOptionsItemSelected");
+
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+        System.out.println("onOptionsItemSelected " + id + " " + android.R.id.home);
+        if (id == R.id.action_settings) {
+            return true;
+        }
+        // Activate the navigation drawer toggle
+        if (mDrawerToggle.onOptionsItemSelected(item)) {
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+
+
+
+
+    public void onSearch(View view){
+        EditText location_tf = (EditText)findViewById(R.id.TFaddress);
+        String location = location_tf.getText().toString();
+        if(location != null && location != ""){
+            Geocoder geocoder = new Geocoder(this);
+            List<Address> addressList = null;
+            try {
+                addressList = geocoder.getFromLocationName(location,1);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            Address address = addressList.get(0);
+            LatLng latLng = new LatLng(address.getLatitude(), address.getLongitude());
+            //marker.remove();
+            marker = mMap.addMarker(new MarkerOptions().position(latLng).title("Marker"));
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+        }
+
     }
 
     private String getUrl(LatLng origin, LatLng dest) {
