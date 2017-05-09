@@ -1,0 +1,46 @@
+@font-face {
+    font-family: Roboto;
+    src: url(../fonts/roboto/Roboto-Regular.ttf);
+}
+
+html {
+    font-family: Roboto;
+    min-height: 100%;
+    position: relative;
+}
+
+body {
+    margin-bottom: 130px;
+}
+
+.padding-top-30 {
+    padding-top: 30px;
+}
+
+.row {
+    margin:0;
+}
+
+[class*="col-"], div#header, footer {
+    background-color: lightgray;
+}
+
+.footer {
+    height: 100px;
+    position: absolute;
+    bottom: 0;
+}
+
+footer > div {
+    line-height: 100px;
+    vertical-align: middle;
+}
+
+.error {
+    border: 1px solid #b94a48;
+    background-color: #fee;
+}
+
+#msgSuccess, #msgError {
+    display: none;
+}
