@@ -10,15 +10,21 @@ $(document).ready(function () {
 
 function sendForm() {
 
-    var script_url = "../php/send.php";
+    var script_url = "/api/register";
+    var data = {
+        shopName: $("#shopName").val(),
+        shopCity: $("#shopCity").val(),
+        shopStreet: $("#shopStreet").val()
+    };
 
     $.ajax({
         type: "POST",
         url: script_url,
-        data: $("#registerForm").serialize(),
+        data: JSON.stringify(data),
+        processData: false,
+        contentType: "application/json; charset=UTF-8",
         success: function(response) {
-            console.log("response: " + response);
-            if(response == 1) {
+            if(response.status == 1) {
                 $('#msgSuccess').fadeIn('slow');
             } else {
                 $('#msgError span').text("Dane niepoprawne. Spróbuj ponownie.");
@@ -26,9 +32,6 @@ function sendForm() {
             }
         },
         error: function(xhr, status, error) {
-            console.log(xhr);
-            console.log(status);
-            console.log(error);
             $('#msgError span').text("Wystąpił nieoczekiwany błąd. Spróbuj ponownie.");
             $('#msgError').fadeIn('slow');
         }
