@@ -2,6 +2,7 @@ package geoshopper.geoshopper;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Color;
@@ -199,7 +200,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void addDrawerItems() {
         System.out.println("addDrawerItems");
-        String[] osArray = {"Szukaj ręcznie"};
+        String[] osArray = {"Szukaj ręcznie", "Lista zakupów"};
         mAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, osArray);
         mDrawerList.setAdapter(mAdapter);
         mDrawerList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -208,6 +209,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 if (id == 0) {
                     findViewById(R.id.search).setVisibility(View.VISIBLE);
                     mDrawerLayout.closeDrawer(mDrawerList);
+                }
+                else if(id == 1){
+                    Intent intent = new Intent(MapsActivity.this, ShoppingListActivity.class);
+                    startActivity(intent);
                 }
 
                 //Toast.makeText(MapsActivity.this, "Time for an upgrade!", Toast.LENGTH_SHORT).show();
