@@ -4,6 +4,7 @@ var path = require("path");
 
 var routes = require("./routes");
 var config = require("./config");
+var geolocalizer = require("./geolocalizer");
 var validator = require("./validator");
 var shopModel = require("./models/shop");
 
@@ -17,20 +18,26 @@ server.get(routes.HOME, function(req, res) {
 
 server.post(routes.API_REGISTER, function(req, res) {
     var shopFromRequest = req.body;
-    console.log(shopFromRequest.shopName);
     if (validator.validateShop(shopFromRequest)) {
-        var shop = new shopModel({
-            name: shopFromRequest.shopName,
-            city: shopFromRequest.shopCity,
-            street: shopFromRequest.shopStreet,
-            latitude: 123,
-            longitude: 456
-        });
-        shop.save(function (err) {
-           if (err) {
+        geolocalizer.getCoords(shopFromRequest.shopCity, shopFromRequest.shopStreet, function(coords) {
+           if (coords == null) {
                res.status(200).json({status: "0"});
            } else {
-               res.status(200).json({status: "1"});
+               var shop = new shopModel({
+                   name: shopFromRequest.shopName,
+                   city: shopFromRequest.shopCity,
+                   street: shopFromRequest.shopStreet,
+                   latitude: coords.latitude,
+                   longitude: coords.longitude
+               });
+               shop.save(function (err) {
+                   if (err) {
+                       res.status(200).json({status: "0"});
+                   } else {
+                       console.log("Successfully registered shop " + shopFromRequest.shopName);
+                       res.status(200).json({status: "1"});
+                   }
+               });
            }
         });
     } else {
