@@ -45,6 +45,13 @@ server.post(routes.API_REGISTER, function(req, res) {
     }
 });
 
+server.get(routes.API_SHOPS, function(req, res) {
+    shopModel.find(function(err, shops) {
+        if (err) { return next(err) }
+        res.json(shops);
+    })
+});
+
 server.listen(config.PORT, function() {
     console.log("Geoshopper server listening on port " + config.PORT);
 });
