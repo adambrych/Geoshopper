@@ -162,6 +162,32 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         //System.out.println("geolokalizacja :" + myLocation.getLatitude() + " " + myLocation.getLongitude());
 
 
+        mMap.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
+            @Override
+            public boolean onMyLocationButtonClick() {
+                mMap.clear();
+                if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    // TODO: Consider calling
+                    //    ActivityCompat#requestPermissions
+                    // here to request the missing permissions, and then overriding
+                    //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                    //                                          int[] grantResults)
+                    // to handle the case where the user grants the permission. See the documentation
+                    // for ActivityCompat#requestPermissions for more details.
+                    return false;
+                }
+                myLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+                if (myLocation != null) {
+                    LatLng latLng = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
+                    if (marker != null) marker.remove();
+                    marker = mMap.addMarker(new MarkerOptions().position(latLng).title("Tu jesteś"));
+                    mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+                    shops(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()));
+                }
+                return false;
+            }
+        });
+
         mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng point) {
@@ -224,8 +250,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 if (id == 0) {
                     findViewById(R.id.search).setVisibility(View.VISIBLE);
                     mDrawerLayout.closeDrawer(mDrawerList);
-                }
-                else if(id == 1){
+                } else if (id == 1) {
                     Intent intent = new Intent(MapsActivity.this, ShoppingListActivity.class);
                     startActivity(intent);
                 }
@@ -318,9 +343,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
 
-    public void shops(final LatLng origin){
+    public void shops(final LatLng origin) {
         final RequestQueue queue = Volley.newRequestQueue(this);
-        String url ="http://192.168.137.1:3000/api/shops";
+        String url = "http://192.168.137.1:3000/api/shops";
 
 // Request a string response from the provided URL.
         final StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
@@ -332,9 +357,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             JSONArray jsonArray = new JSONArray(response);
 
                             MarkerPoints.clear();
-                            for(int i = 0; i<jsonArray.length(); i++){
+                            for (int i = 0; i < jsonArray.length(); i++) {
                                 JSONObject json = jsonArray.getJSONObject(i);
-                                LatLng point = new LatLng(json.getDouble("latitude"),json.getDouble("longitude"));
+                                LatLng point = new LatLng(json.getDouble("latitude"), json.getDouble("longitude"));
                                 MarkerPoints.add(point);
 
                                 // Creating MarkerOptions
@@ -467,9 +492,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         myLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
         if (myLocation != null) {
+            mMap.clear();
             LatLng latLng = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
             if (marker != null) marker.remove();
             marker = mMap.addMarker(new MarkerOptions().position(latLng).title("Tu jesteś"));
+            shops(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()));
             mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
         }
     }
@@ -607,4 +634,5 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     }
+
 }
