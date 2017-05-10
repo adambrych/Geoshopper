@@ -5,6 +5,7 @@ var path = require("path");
 var routes = require("./routes");
 var config = require("./config");
 var validator = require("./validator");
+var shopModel = require("./models/shop");
 
 var server = express();
 server.use(bodyParser.json());
@@ -15,16 +16,26 @@ server.get(routes.HOME, function(req, res) {
 });
 
 server.post(routes.API_REGISTER, function(req, res) {
-    var shop = req.body;
-    var responseStatus = {};
-    console.log(shop.shopName);
-    if (validator.validateShop(shop)) {
-        responseStatus.status = "1";
-        //TODO: save to db
+    var shopFromRequest = req.body;
+    console.log(shopFromRequest.shopName);
+    if (validator.validateShop(shopFromRequest)) {
+        var shop = new shopModel({
+            name: shopFromRequest.shopName,
+            city: shopFromRequest.shopCity,
+            street: shopFromRequest.shopStreet,
+            latitude: 123,
+            longitude: 456
+        });
+        shop.save(function (err) {
+           if (err) {
+               res.status(200).json({status: "0"});
+           } else {
+               res.status(200).json({status: "1"});
+           }
+        });
     } else {
-        responseStatus.status = "0";
+        res.status(200).json({status: "0"});
     }
-    res.status(200).json(responseStatus);
 });
 
 server.listen(config.PORT, function() {
