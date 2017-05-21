@@ -34,6 +34,18 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.android.volley.Cache;
+import com.android.volley.Network;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.BasicNetwork;
+import com.android.volley.toolbox.DiskBasedCache;
+import com.android.volley.toolbox.HurlStack;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -46,6 +58,8 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolylineOptions;
 
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -75,6 +89,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private String mActivityTitle;
     private GoogleApiClient mGoogleApiClient;
     private Location myLocation;
+    private LatLng search;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -147,6 +162,32 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         //System.out.println("geolokalizacja :" + myLocation.getLatitude() + " " + myLocation.getLongitude());
 
 
+        mMap.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
+            @Override
+            public boolean onMyLocationButtonClick() {
+                mMap.clear();
+                if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    // TODO: Consider calling
+                    //    ActivityCompat#requestPermissions
+                    // here to request the missing permissions, and then overriding
+                    //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                    //                                          int[] grantResults)
+                    // to handle the case where the user grants the permission. See the documentation
+                    // for ActivityCompat#requestPermissions for more details.
+                    return false;
+                }
+                myLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+                if (myLocation != null) {
+                    LatLng latLng = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
+                    if (marker != null) marker.remove();
+                    marker = mMap.addMarker(new MarkerOptions().position(latLng).title("Tu jesteś"));
+                    mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+                    shops(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()));
+                }
+                return false;
+            }
+        });
+
         mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng point) {
@@ -209,8 +250,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 if (id == 0) {
                     findViewById(R.id.search).setVisibility(View.VISIBLE);
                     mDrawerLayout.closeDrawer(mDrawerList);
-                }
-                else if(id == 1){
+                } else if (id == 1) {
                     Intent intent = new Intent(MapsActivity.this, ShoppingListActivity.class);
                     startActivity(intent);
                 }
@@ -282,20 +322,78 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             Geocoder geocoder = new Geocoder(this);
             List<Address> addressList = null;
             try {
+                mMap.clear();
                 addressList = geocoder.getFromLocationName(location, 1);
+                if (addressList.size() > 0) {
+                    Address address = addressList.get(0);
+                    search = new LatLng(address.getLatitude(), address.getLongitude());
+                    if (marker != null) marker.remove();
+                    marker = mMap.addMarker(new MarkerOptions().position(search).title("Tu jestes"));
+                    mMap.moveCamera(CameraUpdateFactory.newLatLng(search));
+                    shops(search);
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            if (addressList.size() > 0) {
-                Address address = addressList.get(0);
-                LatLng latLng = new LatLng(address.getLatitude(), address.getLongitude());
-                if (marker != null) marker.remove();
-                marker = mMap.addMarker(new MarkerOptions().position(latLng).title("Tu jestes"));
-                mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-            }
+
+
         }
+
         findViewById(R.id.search).setVisibility(View.INVISIBLE);
     }
+
+
+    public void shops(final LatLng origin) {
+        final RequestQueue queue = Volley.newRequestQueue(this);
+        String url = "http://192.168.137.1:3000/api/shops";
+
+// Request a string response from the provided URL.
+        final StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        // Display the first 500 characters of the response string.
+                        try {
+                            JSONArray jsonArray = new JSONArray(response);
+
+                            MarkerPoints.clear();
+                            for (int i = 0; i < jsonArray.length(); i++) {
+                                JSONObject json = jsonArray.getJSONObject(i);
+                                LatLng point = new LatLng(json.getDouble("latitude"), json.getDouble("longitude"));
+                                MarkerPoints.add(point);
+
+                                // Creating MarkerOptions
+                                MarkerOptions options = new MarkerOptions();
+                                options.position(point);
+                                options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
+                                options.title(json.getString("name"));
+                                options.snippet(json.getString("city") + " " + json.getString("street"));
+                                mMap.addMarker(options);
+                            }
+                            String url = getUrl(origin, MarkerPoints.get(0));
+                            Log.d("onMapClick", url.toString());
+                            FetchUrl FetchUrl = new FetchUrl();
+
+                            // Start downloading json data from Google Directions API
+                            FetchUrl.execute(url);
+                            //move map camera
+                            mMap.moveCamera(CameraUpdateFactory.newLatLng(origin));
+                            mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+
+                    }
+                }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                System.out.println("error request");
+            }
+        });
+// Add the request to the RequestQueue.
+        queue.add(stringRequest);
+    }
+
 
     private String getUrl(LatLng origin, LatLng dest) {
 
@@ -394,9 +492,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         myLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
         if (myLocation != null) {
+            mMap.clear();
             LatLng latLng = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
             if (marker != null) marker.remove();
             marker = mMap.addMarker(new MarkerOptions().position(latLng).title("Tu jesteś"));
+            shops(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()));
             mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
         }
     }
@@ -534,4 +634,5 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     }
+
 }
