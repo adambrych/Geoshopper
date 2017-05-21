@@ -9,6 +9,8 @@ var registerHandler = require("./registerHandler");
 var validator = require("./validator");
 var brandModel = require("./models/brand");
 var productModel = require("./models/product");
+var shopModel = require("./models/shop");
+var geolocalizer = require("./geolocalizer");
 
 var server = express();
 server.use(bodyParser.json());
@@ -70,11 +72,64 @@ server.post(routes.API_REGISTER, function(req, res) {
     }
 });
 
-server.get(routes.API_SHOPS, function(req, res) {
-    shopModel.find(function(err, shops) {
-        if (err) { return next(err) }
-        res.json(shops);
-    })
+server.post(routes.API_SHOPS, function(req, res) {
+    var productsList = req.body.products;
+    var type = req.body.type;
+    var coords = req.body.coords;
+    var resultList = {};
+    if (!productsList || productsList.length == 0 || !coords) {
+        res.status(200).json([]);
+        return;
+    }
+    if (type == "CHEAPEST") {
+        var shops = [];
+        async.forEach(productsList, function(product, callback) {
+            productModel.findOne().where({name: product.name, size: product.size}).sort("price").exec(function(err, product) {
+                if (!shops[product.shop]) {
+                    shops[product.shop] = [];
+                }
+                shops[product.shop].push(product.name + " " + product.size);
+                callback();
+            });
+        }, function(err) {
+            if (!err) {
+                async.forEach(Object.keys(shops), function(shop, callback) {
+                    shopModel.find({name: shop}, function (err, shopsFromDb) {
+                        var minCords = geolocalizer.getNearest(coords, shopsFromDb);
+                        resultList[shop] = {
+                            coords: minCords,
+                            products: shops[shop]
+                        };
+                        callback();
+                    });
+                }, function(err) {
+                    if (err) {
+                        res.status(200).json([]);
+                        return;
+                    }
+                    res.status(200).json(resultList);
+                });
+            } else {
+                res.status(200).json([]);
+            }
+        });
+    } else if (type == "SHORTEST") {
+        //TODO: implement
+    }
+});
+
+server.get(routes.API_PRODUCTS, function(req, res) {
+    var query = req.query;
+    if (query && query.product && query.product.length > 0) {
+        var product = query.product;
+        productModel.find({"name": {$regex: new RegExp("^" + product, "i")}}).select("name").select("size").select("-_id").exec(function(err, products) {
+            if (!err) {
+                res.status(200).json(products);
+            }
+        });
+    } else {
+        res.status(200).json([]);
+    }
 });
 
 server.post(routes.API_PRODUCTS, function(req, res) {
