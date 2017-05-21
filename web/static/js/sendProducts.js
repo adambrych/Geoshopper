@@ -1,3 +1,5 @@
+var fileContent;
+
 $(document).ready(function () {
     $(document).ajaxStart(function () {
         $('#loading').css({'display': 'inline-block'});
@@ -8,13 +10,36 @@ $(document).ready(function () {
     });
 });
 
+function readSingleFile(e) {
+    console.log("witanko");
+    $('#loading').css({'display': 'inline-block'});
+    $('#buttonSend').attr('disabled', true);
+    var file = e.target.files[0];
+    if (!file) {
+        return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        fileContent = e.target.result;
+        console.log(fileContent);
+        $('#loading').css({'display': 'none'});
+        $('#buttonSend').attr('disabled', false);
+    };
+    reader.readAsText(file);
+}
+
+document.getElementById('shopProducts')
+    .addEventListener('change', readSingleFile, false);
+
 function sendForm() {
 
-    var script_url = "/api/register";
+    var script_url = "/api/products";
     var data = {
         shopName: $("#shopName").val(),
-        shopCity: $("#shopCity").val(),
-        shopStreet: $("#shopStreet").val()
+        shopPin: $("#shopPin").val(),
+        shopPromotionFrom: $("#shopPromotionFrom").val(),
+        shopPromotionTo: $("#shopPromotionTo").val(),
+        shopProducts: fileContent
     };
 
     $.ajax({
