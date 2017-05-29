@@ -129,7 +129,11 @@ server.get(routes.API_PRODUCTS, function(req, res) {
         var product = query.product;
         productModel.aggregate([
             {
-                $match: {"name": {$regex: new RegExp("^" + product, "i")}}
+                $match: {
+                    "name": {$regex: new RegExp("^" + product, "i")},
+                    "from": {$lte: new Date()},
+                    "to": {$gte: new Date()}
+                }
             },
             {
                 $group: {
