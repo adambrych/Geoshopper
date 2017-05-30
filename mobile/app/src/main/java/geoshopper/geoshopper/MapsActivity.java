@@ -501,16 +501,19 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             //shops(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), true);
             mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
             mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
-
-            if(getIntent().getStringExtra("json") != null){
+            System.out.println("onConnected sadas");
+            if(getIntent().getStringExtra("jsonArray") != null){
                 try {
                     list = true;
-                    JSONObject json = new JSONObject(getIntent().getStringExtra("json"));
-
+                    JSONArray jsonArray = new JSONArray(getIntent().getStringExtra("jsonArray"));
+                    LatLng previeus;
+                    LatLng point = null;
                     MarkerPoints.clear();
-                    for (int i = 0; i < json.length(); i++) {
-                        JSONObject jsonObject = json.ge
-                        LatLng point = new LatLng(json.getDouble("latitude"), json.getDouble("longitude"));
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject json = jsonArray.getJSONObject(i);
+                        JSONObject coords = json.getJSONObject("coords");
+                        previeus = point;
+                        point = new LatLng(coords.getDouble("latitude"), coords.getDouble("longitude"));
                         MarkerPoints.add(point);
 
                         // Creating MarkerOptions
@@ -519,8 +522,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
                         options.title(json.getString("name"));
 
-                        options.snippet(json.getString("city") + " " + json.getString("street"));
-                        switch (json.getString("name")) {
+                        switch(json.getString("name")){
                             case "Piotr i Paweł":
                                 options.icon(BitmapDescriptorFactory.fromResource(R.drawable.piotripawel));
                                 break;
@@ -534,9 +536,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                         }
                         mMap.addMarker(options);
-
+                        String url;
+                        if(i==0) url = getUrl(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), point);
+                        else url = getUrl(previeus, point);
+                        Log.d("onMapClick", url.toString());
+                        road(url);
+                        //move map camera
                     }
-
 
                 } catch (JSONException e) {
                     e.printStackTrace();

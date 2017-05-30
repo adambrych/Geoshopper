@@ -9,10 +9,12 @@ import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 
+import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.VolleyLog;
+import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 
@@ -63,7 +65,7 @@ public class SummaryActivity extends AppCompatActivity {
                 try {
                     JSONObject request = new JSONObject();
                     JSONArray array = new JSONArray();
-                    for(int i=0; i<products.size(); i++){
+                    for (int i = 0; i < products.size(); i++) {
                         JSONObject product = new JSONObject();
                         product.put("name", products.get(i));
                         product.put("size", sizes.get(i));
@@ -84,7 +86,7 @@ public class SummaryActivity extends AppCompatActivity {
         });
     }
 
-    void PrepareTable(){
+    void PrepareTable() {
         products = (ArrayList<String>) getIntent().getSerializableExtra("products");
         sizes = (ArrayList<String>) getIntent().getSerializableExtra("sizes");
         longitude = getIntent().getStringExtra("longitude");
@@ -92,7 +94,7 @@ public class SummaryActivity extends AppCompatActivity {
         type = getIntent().getStringExtra("type");
 
         TableLayout ll = (TableLayout) findViewById(R.id.table);
-        if(products != null) {
+        if (products != null) {
             for (int i = 0; i < products.size(); i++) {
                 String product = products.get(i);
                 String size = sizes.get(i);
@@ -111,29 +113,28 @@ public class SummaryActivity extends AppCompatActivity {
         }
     }
 
-    void sendRequestJson(JSONObject json){
+    void sendRequestJson(JSONObject json) {
         final String URL = "http://192.168.137.1:3000/api/shops";
         final RequestQueue queue = Volley.newRequestQueue(this);
         System.out.println("Request \n" + json.toString());
-        JsonObjectRequest request_json = new JsonObjectRequest(URL, json,
-                new Response.Listener<JSONObject>() {
-                    @Override
-                    public void onResponse(JSONObject response) {
-
-                        System.out.println("Response \n" + response.toString());
-                        Intent intent = new Intent(SummaryActivity.this, MapsActivity.class);
-                        intent.putExtra("json", response.toString());
-                        startActivity(intent);
-
-                    }
-                }, new Response.ErrorListener() {
+        JsonArrayRequest jsonArrayRequest = new JsonArrayRequest(Request.Method.POST, URL, json, new Response.Listener<JSONArray>() {
+            @Override
+            public void onResponse(JSONArray response) {
+                System.out.println("response" + response.toString());
+                Intent intent = new Intent(SummaryActivity.this, MapsActivity.class);
+                intent.putExtra("jsonArray", response.toString());
+                startActivity(intent);
+            }
+        }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                VolleyLog.e("Error: ", error.getMessage());
+                System.out.print("error");
             }
-        });
+        }) {
+        };
+        queue.add(jsonArrayRequest);
 
-// add the request object to the queue to be executed
-        queue.add(request_json);
     }
 }
+
+
