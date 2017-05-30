@@ -88,7 +88,12 @@ server.post(routes.API_SHOPS, function(req, res) {
                 if (!shops[product.shop]) {
                     shops[product.shop] = [];
                 }
-                shops[product.shop].push(product.name + " " + product.size);
+                var obj = {
+                    name: product.name,
+                    size: product.size,
+                    price: product.price
+                };
+                shops[product.shop].push(obj);
                 callback();
             });
         }, function(err) {
@@ -114,7 +119,7 @@ server.post(routes.API_SHOPS, function(req, res) {
             }
         });
     } else if (type == "SHORTEST") {
-        //TODO: implement
+        //TODO: implement (get all shops by product -> findNearest)
     }
 });
 
@@ -122,9 +127,31 @@ server.get(routes.API_PRODUCTS, function(req, res) {
     var query = req.query;
     if (query && query.product && query.product.length > 0) {
         var product = query.product;
-        productModel.find({"name": {$regex: new RegExp("^" + product, "i")}}).select("name").select("size").select("-_id").exec(function(err, products) {
+        productModel.aggregate([
+            {
+                $match: {
+                    "name": {$regex: new RegExp("^" + product, "i")},
+                    "from": {$lte: new Date()},
+                    "to": {$gte: new Date()}
+                }
+            },
+            {
+                $group: {
+                    "_id": {"name": "$name", "size": "$size"},
+                    name: { $first: "$name" },
+                    size: { $first: "$size" }
+                }
+            },
+            { $project : {
+                _id : 0,
+                name : 1,
+                size: 1
+            }}
+        ]).exec(function(err, products) {
             if (!err) {
                 res.status(200).json(products);
+            } else {
+                console.log(err);
             }
         });
     } else {
