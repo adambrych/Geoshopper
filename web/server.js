@@ -119,9 +119,9 @@ server.post(routes.API_SHOPS, function(req, res) {
             if (!err) {
                 async.forEach(Object.keys(shops), function(shop, callback) {
                     shopModel.find({name: shop}, function (err, shopsFromDb) {
-                        var minCords = geolocalizer.getNearest(coords, shopsFromDb);
+                        var result = geolocalizer.getNearest(coords, shopsFromDb);
                         resultList[shop] = {
-                            coords: minCords,
+                            coords: result.coords,
                             products: shops[shop]
                         };
                         callback();
@@ -138,7 +138,49 @@ server.post(routes.API_SHOPS, function(req, res) {
             }
         });
     } else if (type == "SHORTEST") {
-        //TODO: implement (get all shops by product -> findNearest)
+        var products = [];
+        async.forEach(productsList, function(product, callback) {
+            productModel.find().where({name: product.name, size: product.size}).exec(function(err, productsFromDb) {
+                for (var i = 0; i < productsFromDb.length; i++) {
+                    var product = productsFromDb[i];
+                    var key = product.name + ";" + product.size;
+                    if (!products[key]) {
+                        products[key] = [];
+                    }
+                    if (products[key].indexOf(product.shop) === -1) {
+                        products[key].push(product.shop);
+                    }
+                }
+                callback();
+            });
+        }, function(err) {
+            if (!err) {
+                async.forEach(Object.keys(products), function(productKey, callback) {
+                    var temp = productKey.split(';');
+                    var productName = temp[0];
+                    var productSize = temp[1];
+                    shopModel.find({ name: { "$in" : products[productKey]} }, function(err, shops) {
+                        var result = geolocalizer.getNearest(coords, shops);
+                        if (!resultList[result.shop.name]) {
+                            resultList[result.shop.name] = {
+                                coords: result.coords,
+                                products: []
+                            };
+                        }
+                        resultList[result.shop.name].products.push({name: productName, size: productSize});
+                        callback();
+                    });
+                }, function(err) {
+                    if (err) {
+                        res.status(200).json([]);
+                        return;
+                    }
+                    res.status(200).json(resultList);
+                });
+            } else {
+                res.status(200).json([]);
+            }
+        });
     }
 });
 
@@ -201,7 +243,6 @@ server.post(routes.API_PRODUCTS, function(req, res) {
         products = products.products;
         var productsAmount = products.length;
         async.forEach(products, function(product, callback) {
-            console.log(product);
             if (product.name && product.size && product.price) {
                 var newProduct = new productModel({
                     shop: shopName,

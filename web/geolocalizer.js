@@ -45,6 +45,7 @@ geolocalizer.deg2rad = function(deg) {
 geolocalizer.getNearest = function(coords, shops) {
     var min = 1000000;
     var minCoords = {};
+    var minShop;
     for (var i = 0; i < shops.length; i++) {
         var shop = shops[i];
         var distance = geolocalizer.getDistanceFromLatLonInKm(coords.latitude, coords.longitude, shop.latitude, shop.longitude);
@@ -52,9 +53,13 @@ geolocalizer.getNearest = function(coords, shops) {
             min = distance;
             minCoords.latitude = shop.latitude;
             minCoords.longitude = shop.longitude;
+            minShop = shop;
         }
     }
-    return minCoords;
+    var result = {};
+    result.coords = minCoords;
+    result.shop = minShop;
+    return result;
 };
 
 geolocalizer.getShopsNearby = function(coords, shops) {
@@ -62,7 +67,6 @@ geolocalizer.getShopsNearby = function(coords, shops) {
     for (var i = 0; i < shops.length; i++) {
         var shop = shops[i];
         var distance = geolocalizer.getDistanceFromLatLonInKm(coords.latitude, coords.longitude, shop.latitude, shop.longitude);
-        console.log(distance);
         if (distance <= config.SHOP_NEARBY) {
             shopsNearby.push(shop);
         }
