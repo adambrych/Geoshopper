@@ -57,4 +57,17 @@ geolocalizer.getNearest = function(coords, shops) {
     return minCoords;
 };
 
+geolocalizer.getShopsNearby = function(coords, shops) {
+    var shopsNearby = [];
+    for (var i = 0; i < shops.length; i++) {
+        var shop = shops[i];
+        var distance = geolocalizer.getDistanceFromLatLonInKm(coords.latitude, coords.longitude, shop.latitude, shop.longitude);
+        console.log(distance);
+        if (distance <= config.SHOP_NEARBY) {
+            shopsNearby.push(shop);
+        }
+    }
+    return shopsNearby;
+};
+
 module.exports = geolocalizer;

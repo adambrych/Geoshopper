@@ -72,6 +72,25 @@ server.post(routes.API_REGISTER, function(req, res) {
     }
 });
 
+server.get(routes.API_SHOPS, function(req, res) {
+    var query = req.query;
+    if (query && query.latitude && query.longitude > 0) {
+        shopModel.find({}, function(err, shops) {
+            if (err) {
+                res.status(200).json([]);
+            } else {
+                var coords = {};
+                coords.latitude = query.latitude;
+                coords.longitude = query.longitude;
+                var shopsNearby = geolocalizer.getShopsNearby(coords, shops);
+                res.status(200).json(shopsNearby);
+            }
+        })
+    } else {
+        res.status(200).json([]);
+    }
+});
+
 server.post(routes.API_SHOPS, function(req, res) {
     var productsList = req.body.products;
     var type = req.body.type;
