@@ -64,6 +64,46 @@ public class DataParser {
         return routes;
     }
 
+    public int distance(JSONObject jObject){
+        System.out.println("funkcja distance");
+        int distance = 0;
+        JSONArray jRoutes;
+        JSONArray jLegs;
+        JSONArray jSteps;
+
+        try {
+
+            jRoutes = jObject.getJSONArray("routes");
+            System.out.println("routes " + jRoutes.length());
+            /** Traversing all routes */
+            for(int i=0;i<jRoutes.length();i++){
+                jLegs = ( (JSONObject)jRoutes.get(i)).getJSONArray("legs");
+                System.out.println("legs " + jLegs.length());
+                /** Traversing all legs */
+                for(int j=0;j<jLegs.length();j++){
+                    jSteps = ( (JSONObject)jLegs.get(j)).getJSONArray("steps");
+                    System.out.println("steps " + jSteps.length());
+                    /** Traversing all steps */
+                    for(int k=0;k<jSteps.length();k++){
+                        System.out.println("step");
+                        int thisDistance;
+                        thisDistance = (int)((JSONObject)((JSONObject)jSteps.get(k)).get("distance")).get("value");
+                        System.out.println("distance metry " + ((JSONObject)((JSONObject)jSteps.get(k)).get("distance")).get("value"));
+                        distance += thisDistance;
+
+                    }
+                }
+            }
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }catch (Exception e){
+        }
+
+
+        return distance;
+    }
+
 
     /**
      * Method to decode polyline points
@@ -102,4 +142,6 @@ public class DataParser {
 
         return poly;
     }
+
+
 }

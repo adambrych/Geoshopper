@@ -56,6 +56,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
 import org.json.JSONArray;
@@ -90,6 +91,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private GoogleApiClient mGoogleApiClient;
     private Location myLocation;
     private LatLng search;
+    private int actualDistanse;
+    private Polyline polyline = null;
+    private String mode = "driving";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -139,15 +143,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
 
-    /**
-     * Manipulates the map once available.
-     * This callback is triggered when the map is ready to be used.
-     * This is where we can add markers or lines, add listeners or move the camera. In this case,
-     * we just add a marker near Sydney, Australia.
-     * If Google Play services is not installed on the device, the user will be prompted to install
-     * it inside the SupportMapFragment. This method will only be triggered once the user has
-     * installed Google Play services and returned to the app.
-     */
+
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
@@ -158,22 +154,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (!(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)) {
             mMap.setMyLocationEnabled(true);
         }
-        //myLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-        //System.out.println("geolokalizacja :" + myLocation.getLatitude() + " " + myLocation.getLongitude());
-
 
         mMap.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
             @Override
             public boolean onMyLocationButtonClick() {
                 mMap.clear();
                 if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    // TODO: Consider calling
-                    //    ActivityCompat#requestPermissions
-                    // here to request the missing permissions, and then overriding
-                    //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                    //                                          int[] grantResults)
-                    // to handle the case where the user grants the permission. See the documentation
-                    // for ActivityCompat#requestPermissions for more details.
+
                     return false;
                 }
                 myLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
@@ -182,66 +169,36 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     if (marker != null) marker.remove();
                     marker = mMap.addMarker(new MarkerOptions().position(latLng).title("Tu jesteś"));
                     mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-                    shops(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()));
+                    //shops(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), true);
                 }
                 return false;
             }
+
+
         });
 
-        mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
+        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
             @Override
-            public void onMapClick(LatLng point) {
+            public boolean onMarkerClick(Marker markerClick) {
+                if(myLocation != null && polyline != null){
+                    markerClick.hideInfoWindow();
+                    polyline.remove();
+                    String url = getUrl(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), markerClick.getPosition());
 
-                // Already two locations
-                if (MarkerPoints.size() > 1) {
-                    MarkerPoints.clear();
-                    mMap.clear();
-                }
-
-                // Adding new item to the ArrayList
-                MarkerPoints.add(point);
-
-                // Creating MarkerOptions
-                MarkerOptions options = new MarkerOptions();
-
-                // Setting the position of the marker
-                options.position(point);
-
-
-                if (MarkerPoints.size() == 1) {
-                    options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
-                } else if (MarkerPoints.size() == 2) {
-                    options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED));
-                }
-
-
-                // Add new marker to the Google Map Android API V2
-                mMap.addMarker(options);
-
-                // Checks, whether start and end locations are captured
-                if (MarkerPoints.size() >= 2) {
-                    LatLng origin = MarkerPoints.get(0);
-                    LatLng dest = MarkerPoints.get(1);
-
-                    // Getting URL to the Google Directions API
-                    String url = getUrl(origin, dest);
                     Log.d("onMapClick", url.toString());
-                    FetchUrl FetchUrl = new FetchUrl();
+                    road(url, markerClick);
+                    System.out.println("po  fetch " + actualDistanse);
 
-                    // Start downloading json data from Google Directions API
-                    FetchUrl.execute(url);
                     //move map camera
-                    mMap.moveCamera(CameraUpdateFactory.newLatLng(origin));
-                    mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
                 }
-
+                return false;
             }
         });
     }
 
     private void addDrawerItems() {
         System.out.println("addDrawerItems");
-        String[] osArray = {"Szukaj ręcznie", "Lista zakupów"};
+        String[] osArray = {"Szukaj ręcznie", "Zmień jazda samochodem/pieszo", "Lista zakupów"};
         mAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, osArray);
         mDrawerList.setAdapter(mAdapter);
         mDrawerList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -251,8 +208,20 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     findViewById(R.id.search).setVisibility(View.VISIBLE);
                     mDrawerLayout.closeDrawer(mDrawerList);
                 } else if (id == 1) {
-                    Intent intent = new Intent(MapsActivity.this, ShoppingListActivity.class);
-                    startActivity(intent);
+                    if(mode.equals("driving")) mode = "walking";
+                    else mode = "driving";
+                    mDrawerLayout.closeDrawer(mDrawerList);
+                } else if (id == 2) {
+                    if(myLocation != null){
+                        Intent intent = new Intent(MapsActivity.this, ShoppingListActivity.class);
+                        intent.putExtra("latitude", String.valueOf(myLocation.getLatitude()));
+                        intent.putExtra("longtitude", String.valueOf(myLocation.getLongitude()));
+                        intent.putExtra("type", "CHEAPEST");
+                        startActivity(intent);
+                    }
+                    else{
+                        Toast.makeText(getApplicationContext(), "Brak dostępu do internetu", Toast.LENGTH_SHORT).show();
+                    }
                 }
 
                 //Toast.makeText(MapsActivity.this, "Time for an upgrade!", Toast.LENGTH_SHORT).show();
@@ -330,7 +299,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     if (marker != null) marker.remove();
                     marker = mMap.addMarker(new MarkerOptions().position(search).title("Tu jestes"));
                     mMap.moveCamera(CameraUpdateFactory.newLatLng(search));
-                    shops(search);
+                    //shops(search, true);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -343,9 +312,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
 
-    public void shops(final LatLng origin) {
+    public void shops(final LatLng origin, final boolean drawRoad) {
         final RequestQueue queue = Volley.newRequestQueue(this);
         String url = "http://192.168.137.1:3000/api/shops";
+        //String url = "http://192.168.43.86:3000/api/shops";
 
 // Request a string response from the provided URL.
         final StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
@@ -367,18 +337,45 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 options.position(point);
                                 options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
                                 options.title(json.getString("name"));
+
+
+                                /*Location locationA = new Location("point A");
+
+                                locationA.setLatitude(myLocation.getLatitude());
+                                locationA.setLongitude(myLocation.getLongitude());
+
+                                Location locationB = new Location("point B");
+
+                                locationB.setLatitude(point.latitude);
+                                locationB.setLongitude(point.longitude);
+
+                                float distance = locationA.distanceTo(locationB);*/
+
+
                                 options.snippet(json.getString("city") + " " + json.getString("street"));
+                                switch(json.getString("name")){
+                                    case "Piotr i Paweł":
+                                        options.icon(BitmapDescriptorFactory.fromResource(R.drawable.piotripawel));
+                                        break;
+                                    case "Biedronka":
+                                        options.icon(BitmapDescriptorFactory.fromResource(R.drawable.biedronka));
+                                        break;
+                                    case "Spolem":
+                                        options.icon(BitmapDescriptorFactory.fromResource(R.drawable.spolem));
+                                    case "Carrefour":
+                                        options.icon(BitmapDescriptorFactory.fromResource(R.drawable.carrefour));
+
+                                }
                                 mMap.addMarker(options);
                             }
-                            String url = getUrl(origin, MarkerPoints.get(0));
-                            Log.d("onMapClick", url.toString());
-                            FetchUrl FetchUrl = new FetchUrl();
-
-                            // Start downloading json data from Google Directions API
-                            FetchUrl.execute(url);
-                            //move map camera
-                            mMap.moveCamera(CameraUpdateFactory.newLatLng(origin));
-                            mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
+                            if(drawRoad == true) {
+                                String url = getUrl(origin, MarkerPoints.get(0));
+                                Log.d("onMapClick", url.toString());
+                               road(url);
+                                //move map camera
+                                mMap.moveCamera(CameraUpdateFactory.newLatLng(origin));
+                                mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
+                            }
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
@@ -407,8 +404,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         // Sensor enabled
         String sensor = "sensor=false";
 
+        String modes = "mode=" + mode;
+
         // Building the parameters to the web service
-        String parameters = str_origin + "&" + str_dest + "&" + sensor;
+        String parameters = str_origin + "&" + str_dest + "&" + sensor + "&" + modes;
 
         // Output format
         String output = "json";
@@ -460,7 +459,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onLocationChanged(Location location) {
-        System.out.println("geolokalizacja :" + location.getLatitude() + " " + location.getLongitude());
+        myLocation.setLatitude(location.getLatitude());
+        myLocation.setLongitude(location.getLongitude());
+        if (marker != null) marker.remove();
+        marker = mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(), location.getLongitude())).title("Tu jesteś"));
     }
 
     @Override
@@ -496,7 +498,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             LatLng latLng = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
             if (marker != null) marker.remove();
             marker = mMap.addMarker(new MarkerOptions().position(latLng).title("Tu jesteś"));
-            shops(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()));
+            //shops(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), true);
             mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
         }
     }
@@ -511,106 +513,170 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     }
 
-    private class FetchUrl extends AsyncTask<String, Void, String> {
+    public void road(String url, final Marker markerClick){
+        final RequestQueue queue = Volley.newRequestQueue(this);
+        final StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
 
-        @Override
-        protected String doInBackground(String... url) {
+                        JSONObject jObject;
+                        List<List<HashMap<String, String>>> routes = null;
 
-            // For storing data from web service
-            String data = "";
+                        try {
+                            jObject = new JSONObject(response);
+                            Log.d("ParserTask",response.toString());
+                            DataParser parser = new DataParser();
+                            Log.d("ParserTask", parser.toString());
 
-            try {
-                // Fetching the data from web service
-                data = downloadUrl(url[0]);
-                Log.d("Background Task data", data.toString());
-            } catch (Exception e) {
-                Log.d("Background Task", e.toString());
+                            // Starts parsing data
+                            routes = parser.parse(jObject);
+                            System.out.println("przed actualdistance " + actualDistanse);
+                            actualDistanse = parser.distance(jObject);
+                            System.out.println("po actualdistance " + actualDistanse);
+                            markerClick.setSnippet(markerClick.getSnippet() + " odleglość " + actualDistanse);
+                            markerClick.showInfoWindow();
+                            Log.d("ParserTask","Executing routes");
+                            Log.d("ParserTask",routes.toString());
+
+                            ArrayList<LatLng> points;
+                            PolylineOptions lineOptions = null;
+
+                            // Traversing through all the routes
+                            for (int i = 0; i < routes.size(); i++) {
+                                points = new ArrayList<>();
+                                lineOptions = new PolylineOptions();
+
+                                // Fetching i-th route
+                                List<HashMap<String, String>> path = routes.get(i);
+
+                                // Fetching all the points in i-th route
+                                for (int j = 0; j < path.size(); j++) {
+                                    HashMap<String, String> point = path.get(j);
+
+                                    double lat = Double.parseDouble(point.get("lat"));
+                                    double lng = Double.parseDouble(point.get("lng"));
+                                    LatLng position = new LatLng(lat, lng);
+
+                                    points.add(position);
+                                }
+
+                                // Adding all the points in the route to LineOptions
+                                lineOptions.addAll(points);
+                                lineOptions.width(10);
+                                lineOptions.color(Color.RED);
+
+                                Log.d("onPostExecute","onPostExecute lineoptions decoded");
+
+                            }
+
+                            // Drawing polyline in the Google Map for the i-th route
+                            if(lineOptions != null) {
+                                polyline = mMap.addPolyline(lineOptions);
+
+                            }
+                            else {
+                                Log.d("onPostExecute","without Polylines drawn");
+                            }
+
+
+                        } catch (Exception e) {
+                            Log.d("ParserTask",e.toString());
+                            e.printStackTrace();
+                        }
+
+
+                    }
+                }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                System.out.println("error request");
             }
-            return data;
-        }
-
-        @Override
-        protected void onPostExecute(String result) {
-            super.onPostExecute(result);
-
-            ParserTask parserTask = new ParserTask();
-
-            // Invokes the thread for parsing the JSON data
-            parserTask.execute(result);
-
-        }
+        });
+        queue.add(stringRequest);
     }
 
-    private class ParserTask extends AsyncTask<String, Integer, List<List<HashMap<String, String>>>> {
+    public void road(String url){
+        final RequestQueue queue = Volley.newRequestQueue(this);
+        final StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
 
-        // Parsing the data in non-ui thread
-        @Override
-        protected List<List<HashMap<String, String>>> doInBackground(String... jsonData) {
+                        JSONObject jObject;
+                        List<List<HashMap<String, String>>> routes = null;
 
-            JSONObject jObject;
-            List<List<HashMap<String, String>>> routes = null;
+                        try {
+                            jObject = new JSONObject(response);
+                            Log.d("ParserTask",response.toString());
+                            DataParser parser = new DataParser();
+                            Log.d("ParserTask", parser.toString());
 
-            try {
-                jObject = new JSONObject(jsonData[0]);
-                Log.d("ParserTask",jsonData[0].toString());
-                DataParser parser = new DataParser();
-                Log.d("ParserTask", parser.toString());
+                            // Starts parsing data
+                            routes = parser.parse(jObject);
+                            System.out.println("przed actualdistance " + actualDistanse);
+                            actualDistanse = parser.distance(jObject);
+                            System.out.println("po actualdistance " + actualDistanse);
+                            Log.d("ParserTask","Executing routes");
+                            Log.d("ParserTask",routes.toString());
 
-                // Starts parsing data
-                routes = parser.parse(jObject);
-                Log.d("ParserTask","Executing routes");
-                Log.d("ParserTask",routes.toString());
+                            ArrayList<LatLng> points;
+                            PolylineOptions lineOptions = null;
 
-            } catch (Exception e) {
-                Log.d("ParserTask",e.toString());
-                e.printStackTrace();
+                            // Traversing through all the routes
+                            for (int i = 0; i < routes.size(); i++) {
+                                points = new ArrayList<>();
+                                lineOptions = new PolylineOptions();
+
+                                // Fetching i-th route
+                                List<HashMap<String, String>> path = routes.get(i);
+
+                                // Fetching all the points in i-th route
+                                for (int j = 0; j < path.size(); j++) {
+                                    HashMap<String, String> point = path.get(j);
+
+                                    double lat = Double.parseDouble(point.get("lat"));
+                                    double lng = Double.parseDouble(point.get("lng"));
+                                    LatLng position = new LatLng(lat, lng);
+
+                                    points.add(position);
+                                }
+
+                                // Adding all the points in the route to LineOptions
+                                lineOptions.addAll(points);
+                                lineOptions.width(10);
+                                lineOptions.color(Color.RED);
+
+                                Log.d("onPostExecute","onPostExecute lineoptions decoded");
+
+                            }
+
+                            // Drawing polyline in the Google Map for the i-th route
+                            if(lineOptions != null) {
+                                polyline = mMap.addPolyline(lineOptions);
+
+                            }
+                            else {
+                                Log.d("onPostExecute","without Polylines drawn");
+                            }
+
+
+                        } catch (Exception e) {
+                            Log.d("ParserTask",e.toString());
+                            e.printStackTrace();
+                        }
+
+
+                    }
+                }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                System.out.println("error request");
             }
-            return routes;
-        }
-
-        // Executes in UI thread, after the parsing process
-        @Override
-        protected void onPostExecute(List<List<HashMap<String, String>>> result) {
-            ArrayList<LatLng> points;
-            PolylineOptions lineOptions = null;
-
-            // Traversing through all the routes
-            for (int i = 0; i < result.size(); i++) {
-                points = new ArrayList<>();
-                lineOptions = new PolylineOptions();
-
-                // Fetching i-th route
-                List<HashMap<String, String>> path = result.get(i);
-
-                // Fetching all the points in i-th route
-                for (int j = 0; j < path.size(); j++) {
-                    HashMap<String, String> point = path.get(j);
-
-                    double lat = Double.parseDouble(point.get("lat"));
-                    double lng = Double.parseDouble(point.get("lng"));
-                    LatLng position = new LatLng(lat, lng);
-
-                    points.add(position);
-                }
-
-                // Adding all the points in the route to LineOptions
-                lineOptions.addAll(points);
-                lineOptions.width(10);
-                lineOptions.color(Color.RED);
-
-                Log.d("onPostExecute","onPostExecute lineoptions decoded");
-
-            }
-
-            // Drawing polyline in the Google Map for the i-th route
-            if(lineOptions != null) {
-                mMap.addPolyline(lineOptions);
-            }
-            else {
-                Log.d("onPostExecute","without Polylines drawn");
-            }
-        }
+        });
+        queue.add(stringRequest);
     }
+
 
     public static boolean isLocationEnabled(Context context) {
         int locationMode = 0;
