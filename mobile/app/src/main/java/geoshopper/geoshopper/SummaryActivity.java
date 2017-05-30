@@ -29,7 +29,7 @@ public class SummaryActivity extends AppCompatActivity {
 
     ArrayList<String> products;
     ArrayList<String> sizes;
-    String longtitude;
+    String longitude;
     String latitude;
     String type;
 
@@ -49,7 +49,7 @@ public class SummaryActivity extends AppCompatActivity {
                 intent.putExtra("products", products);
                 intent.putExtra("sizes", sizes);
                 intent.putExtra("type", "CHEAPEST");
-                intent.putExtra("longtitude", longtitude);
+                intent.putExtra("longitude", longitude);
                 intent.putExtra("latitude", latitude);
                 startActivity(intent);
             }
@@ -72,7 +72,7 @@ public class SummaryActivity extends AppCompatActivity {
 
                     JSONObject coords = new JSONObject();
                     coords.put("latitude", latitude);
-                    coords.put("longtitude", longtitude);
+                    coords.put("longitude", longitude);
                     request.put("type", type);
                     request.put("products", array);
                     request.put("coords", coords);
@@ -87,7 +87,7 @@ public class SummaryActivity extends AppCompatActivity {
     void PrepareTable(){
         products = (ArrayList<String>) getIntent().getSerializableExtra("products");
         sizes = (ArrayList<String>) getIntent().getSerializableExtra("sizes");
-        longtitude = getIntent().getStringExtra("longtitude");
+        longitude = getIntent().getStringExtra("longitude");
         latitude = getIntent().getStringExtra("latitude");
         type = getIntent().getStringExtra("type");
 
@@ -121,7 +121,7 @@ public class SummaryActivity extends AppCompatActivity {
                     public void onResponse(JSONObject response) {
 
                         System.out.println("Response \n" + response.toString());
-                        Intent intent = new Intent(SummaryActivity.this, SummaryActivity.class);
+                        Intent intent = new Intent(SummaryActivity.this, MapsActivity.class);
                         intent.putExtra("json", response.toString());
                         startActivity(intent);
 

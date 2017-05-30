@@ -94,6 +94,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private int actualDistanse;
     private Polyline polyline = null;
     private String mode = "driving";
+    private String type = "CHEAPEST";
+    private Boolean list = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -132,14 +134,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
 
-        if(getIntent().getStringExtra("json")!=null){
-            System.out.println("response z podsumowania");
-            try {
-                JSONObject json = new JSONObject(getIntent().getStringExtra("json"));
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-        }
 
     }
 
@@ -195,14 +189,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             public boolean onMarkerClick(Marker markerClick) {
                 if(myLocation != null && polyline != null){
                     markerClick.hideInfoWindow();
-                    //polyline.remove();
-                    //String url = getUrl(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), markerClick.getPosition());
+                    if(list == false) {
+                        polyline.remove();
+                        String url = getUrl(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), markerClick.getPosition());
 
-                    //Log.d("onMapClick", url.toString());
-                   // road(url, markerClick);
-                    System.out.println("po  fetch " + actualDistanse);
-
-                    //move map camera
+                        Log.d("onMapClick", url.toString());
+                         road(url, markerClick);
+                    }
                 }
                 return false;
             }
@@ -214,7 +207,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         final ArrayList<String> osArray = new ArrayList<String>();
         osArray.add("Szukaj ręcznie");
         osArray.add("Zmień tryb na pieszo");
+        osArray.add("Zmień trasę na najkrótszą");
         osArray.add("Lista zakupów");
+        osArray.add("Wyszukaj sklepy w okolicy");
         final Context context = this;
         mAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, osArray);
         mDrawerList.setAdapter(mAdapter);
@@ -240,12 +235,36 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                     mDrawerLayout.closeDrawer(mDrawerList);
                 } else if (id == 2) {
+                    if(type.equals("CHEAPEST")) {
+                        osArray.set(2, "Zmień trasę na najkrótszą");
+                        mAdapter = new ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, osArray);
+                        mDrawerList.setAdapter(mAdapter);
+                        mode = "walking";
+                    }
+                    else{
+                        mode = "SHORTEST";
+                        osArray.set(2, "Zmień trasę na najtańszą");
+                        mAdapter = new ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, osArray);
+                        mDrawerList.setAdapter(mAdapter);
+                    }
+
+                    mDrawerLayout.closeDrawer(mDrawerList);
+                }else if (id == 3) {
                     if(myLocation != null){
                         Intent intent = new Intent(MapsActivity.this, ShoppingListActivity.class);
                         intent.putExtra("latitude", String.valueOf(myLocation.getLatitude()));
-                        intent.putExtra("longtitude", String.valueOf(myLocation.getLongitude()));
+                        intent.putExtra("longitude", String.valueOf(myLocation.getLongitude()));
                         intent.putExtra("type", "CHEAPEST");
                         startActivity(intent);
+                    }
+                    else{
+                        Toast.makeText(getApplicationContext(), "Brak dostępu do internetu", Toast.LENGTH_SHORT).show();
+                    }
+                }
+                else if(id == 4){
+                    if(myLocation!=null) {
+                        list = false;
+                        shops(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), true);
                     }
                     else{
                         Toast.makeText(getApplicationContext(), "Brak dostępu do internetu", Toast.LENGTH_SHORT).show();
@@ -319,6 +338,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             Geocoder geocoder = new Geocoder(this);
             List<Address> addressList = null;
             try {
+                list = false;
                 mMap.clear();
                 addressList = geocoder.getFromLocationName(location, 1);
                 if (addressList.size() > 0) {
@@ -328,7 +348,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     marker = mMap.addMarker(new MarkerOptions().position(search).title("Tu jestes"));
                     mMap.moveCamera(CameraUpdateFactory.newLatLng(search));
                     mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
-                    //shops(search, true);
+                    shops(search, true);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -343,7 +363,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     public void shops(final LatLng origin, final boolean drawRoad) {
         final RequestQueue queue = Volley.newRequestQueue(this);
-        String url = "http://192.168.137.1:3000/api/shops";
+        String url = "http://192.168.137.1:3000/api/shops?latitude=" + origin.latitude + "&longitude=" + origin.longitude;
         //String url = "http://192.168.43.86:3000/api/shops";
 
 // Request a string response from the provided URL.
@@ -367,20 +387,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
                                 options.title(json.getString("name"));
 
-
-                                /*Location locationA = new Location("point A");
-
-                                locationA.setLatitude(myLocation.getLatitude());
-                                locationA.setLongitude(myLocation.getLongitude());
-
-                                Location locationB = new Location("point B");
-
-                                locationB.setLatitude(point.latitude);
-                                locationB.setLongitude(point.longitude);
-
-                                float distance = locationA.distanceTo(locationB);*/
-
-
                                 options.snippet(json.getString("city") + " " + json.getString("street"));
                                 switch(json.getString("name")){
                                     case "Piotr i Paweł":
@@ -389,7 +395,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                     case "Biedronka":
                                         options.icon(BitmapDescriptorFactory.fromResource(R.drawable.biedronka));
                                         break;
-                                    case "Spolem":
+                                    case "Społem":
                                         options.icon(BitmapDescriptorFactory.fromResource(R.drawable.spolem));
                                     case "Carrefour":
                                         options.icon(BitmapDescriptorFactory.fromResource(R.drawable.carrefour));
@@ -448,46 +454,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         return url;
     }
 
-    private String downloadUrl(String strUrl) throws IOException {
-        String data = "";
-        InputStream iStream = null;
-        HttpURLConnection urlConnection = null;
-        try {
-            URL url = new URL(strUrl);
-
-            // Creating an http connection to communicate with url
-            urlConnection = (HttpURLConnection) url.openConnection();
-
-            // Connecting to url
-            urlConnection.connect();
-
-            // Reading data from url
-            iStream = urlConnection.getInputStream();
-
-            BufferedReader br = new BufferedReader(new InputStreamReader(iStream));
-
-            StringBuffer sb = new StringBuffer();
-
-            String line = "";
-            while ((line = br.readLine()) != null) {
-                sb.append(line);
-            }
-
-            data = sb.toString();
-            Log.d("downloadUrl", data.toString());
-            br.close();
-
-        } catch (Exception e) {
-            Log.d("Exception", e.toString());
-        } finally {
-            iStream.close();
-            urlConnection.disconnect();
-        }
-        return data;
-    }
 
     @Override
     public void onLocationChanged(Location location) {
+        System.out.println("onlocation changed");
         myLocation.setLatitude(location.getLatitude());
         myLocation.setLongitude(location.getLongitude());
         if (marker != null) marker.remove();
@@ -522,6 +492,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             return;
         }
         myLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+
         if (myLocation != null) {
             mMap.clear();
             LatLng latLng = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
@@ -530,6 +501,47 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             //shops(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), true);
             mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
             mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
+
+            if(getIntent().getStringExtra("json") != null){
+                try {
+                    list = true;
+                    JSONObject json = new JSONObject(getIntent().getStringExtra("json"));
+
+                    MarkerPoints.clear();
+                    for (int i = 0; i < json.length(); i++) {
+                        JSONObject jsonObject = json.ge
+                        LatLng point = new LatLng(json.getDouble("latitude"), json.getDouble("longitude"));
+                        MarkerPoints.add(point);
+
+                        // Creating MarkerOptions
+                        MarkerOptions options = new MarkerOptions();
+                        options.position(point);
+                        options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
+                        options.title(json.getString("name"));
+
+                        options.snippet(json.getString("city") + " " + json.getString("street"));
+                        switch (json.getString("name")) {
+                            case "Piotr i Paweł":
+                                options.icon(BitmapDescriptorFactory.fromResource(R.drawable.piotripawel));
+                                break;
+                            case "Biedronka":
+                                options.icon(BitmapDescriptorFactory.fromResource(R.drawable.biedronka));
+                                break;
+                            case "Społem":
+                                options.icon(BitmapDescriptorFactory.fromResource(R.drawable.spolem));
+                            case "Carrefour":
+                                options.icon(BitmapDescriptorFactory.fromResource(R.drawable.carrefour));
+
+                        }
+                        mMap.addMarker(options);
+
+                    }
+
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
