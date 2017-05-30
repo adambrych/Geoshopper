@@ -95,7 +95,7 @@ server.post(routes.API_SHOPS, function(req, res) {
     var productsList = req.body.products;
     var type = req.body.type;
     var coords = req.body.coords;
-    var resultList = {};
+    var resultList = [];
     if (!productsList || productsList.length == 0 || !coords) {
         res.status(200).json([]);
         return;
@@ -120,10 +120,11 @@ server.post(routes.API_SHOPS, function(req, res) {
                 async.forEach(Object.keys(shops), function(shop, callback) {
                     shopModel.find({name: shop}, function (err, shopsFromDb) {
                         var result = geolocalizer.getNearest(coords, shopsFromDb);
-                        resultList[shop] = {
+                        resultList.push({
+                            name: shop,
                             coords: result.coords,
                             products: shops[shop]
-                        };
+                        });
                         callback();
                     });
                 }, function(err) {
@@ -131,6 +132,7 @@ server.post(routes.API_SHOPS, function(req, res) {
                         res.status(200).json([]);
                         return;
                     }
+                    console.log(resultList);
                     res.status(200).json(resultList);
                 });
             } else {
@@ -161,13 +163,25 @@ server.post(routes.API_SHOPS, function(req, res) {
                     var productSize = temp[1];
                     shopModel.find({ name: { "$in" : products[productKey]} }, function(err, shops) {
                         var result = geolocalizer.getNearest(coords, shops);
-                        if (!resultList[result.shop.name]) {
-                            resultList[result.shop.name] = {
+                        var missing = true;
+                        for (var s in resultList) {
+                            if (resultList[s].name == result.shop.name) {
+                                missing = false;
+                                break;
+                            }
+                        }
+                        if (missing) {
+                            resultList.push({
+                                name: result.shop.name,
                                 coords: result.coords,
                                 products: []
-                            };
+                            });
                         }
-                        resultList[result.shop.name].products.push({name: productName, size: productSize});
+                        for (var s in resultList) {
+                            if (resultList[s].name == result.shop.name) {
+                                resultList[s].products.push({name: productName, size: productSize})
+                            }
+                        }
                         callback();
                     });
                 }, function(err) {
