@@ -95,7 +95,7 @@ server.post(routes.API_SHOPS, function(req, res) {
     var productsList = req.body.products;
     var type = req.body.type;
     var coords = req.body.coords;
-    var resultList = {};
+    var resultList = [];
     if (!productsList || productsList.length == 0 || !coords) {
         res.status(200).json([]);
         return;
@@ -119,11 +119,69 @@ server.post(routes.API_SHOPS, function(req, res) {
             if (!err) {
                 async.forEach(Object.keys(shops), function(shop, callback) {
                     shopModel.find({name: shop}, function (err, shopsFromDb) {
-                        var minCords = geolocalizer.getNearest(coords, shopsFromDb);
-                        resultList[shop] = {
-                            coords: minCords,
+                        var result = geolocalizer.getNearest(coords, shopsFromDb);
+                        resultList.push({
+                            name: shop,
+                            coords: result.coords,
                             products: shops[shop]
-                        };
+                        });
+                        callback();
+                    });
+                }, function(err) {
+                    if (err) {
+                        res.status(200).json([]);
+                        return;
+                    }
+                    console.log(resultList);
+                    res.status(200).json(resultList);
+                });
+            } else {
+                res.status(200).json([]);
+            }
+        });
+    } else if (type == "SHORTEST") {
+        var products = [];
+        async.forEach(productsList, function(product, callback) {
+            productModel.find().where({name: product.name, size: product.size}).exec(function(err, productsFromDb) {
+                for (var i = 0; i < productsFromDb.length; i++) {
+                    var product = productsFromDb[i];
+                    var key = product.name + ";" + product.size;
+                    if (!products[key]) {
+                        products[key] = [];
+                    }
+                    if (products[key].indexOf(product.shop) === -1) {
+                        products[key].push(product.shop);
+                    }
+                }
+                callback();
+            });
+        }, function(err) {
+            if (!err) {
+                async.forEach(Object.keys(products), function(productKey, callback) {
+                    var temp = productKey.split(';');
+                    var productName = temp[0];
+                    var productSize = temp[1];
+                    shopModel.find({ name: { "$in" : products[productKey]} }, function(err, shops) {
+                        var result = geolocalizer.getNearest(coords, shops);
+                        var missing = true;
+                        for (var s in resultList) {
+                            if (resultList[s].name == result.shop.name) {
+                                missing = false;
+                                break;
+                            }
+                        }
+                        if (missing) {
+                            resultList.push({
+                                name: result.shop.name,
+                                coords: result.coords,
+                                products: []
+                            });
+                        }
+                        for (var s in resultList) {
+                            if (resultList[s].name == result.shop.name) {
+                                resultList[s].products.push({name: productName, size: productSize})
+                            }
+                        }
                         callback();
                     });
                 }, function(err) {
@@ -137,8 +195,6 @@ server.post(routes.API_SHOPS, function(req, res) {
                 res.status(200).json([]);
             }
         });
-    } else if (type == "SHORTEST") {
-        //TODO: implement (get all shops by product -> findNearest)
     }
 });
 
@@ -201,7 +257,6 @@ server.post(routes.API_PRODUCTS, function(req, res) {
         products = products.products;
         var productsAmount = products.length;
         async.forEach(products, function(product, callback) {
-            console.log(product);
             if (product.name && product.size && product.price) {
                 var newProduct = new productModel({
                     shop: shopName,
