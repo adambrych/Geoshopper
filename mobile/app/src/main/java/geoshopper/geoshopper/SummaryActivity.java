@@ -122,7 +122,7 @@ public class SummaryActivity extends AppCompatActivity {
 
                         System.out.println("Response \n" + response.toString());
                         Intent intent = new Intent(SummaryActivity.this, SummaryActivity.class);
-                        intent.putExtra("products", response.toString());
+                        intent.putExtra("json", response.toString());
                         startActivity(intent);
 
                     }

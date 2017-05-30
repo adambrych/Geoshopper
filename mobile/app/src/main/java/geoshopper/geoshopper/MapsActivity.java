@@ -130,6 +130,17 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (!isLocationEnabled(getApplicationContext())) {
             Toast.makeText(getApplicationContext(), "Brak dostępu do lokalizacji", Toast.LENGTH_SHORT).show();
         }
+
+
+        if(getIntent().getStringExtra("json")!=null){
+            System.out.println("response z podsumowania");
+            try {
+                JSONObject json = new JSONObject(getIntent().getStringExtra("json"));
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+
     }
 
     protected void onStart() {
@@ -151,6 +162,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         // Add a marker in Sydney and move the camera
         LatLng center = new LatLng(0, 0);
         mMap.moveCamera(CameraUpdateFactory.newLatLng(center));
+        mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
         if (!(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)) {
             mMap.setMyLocationEnabled(true);
         }
@@ -169,6 +181,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     if (marker != null) marker.remove();
                     marker = mMap.addMarker(new MarkerOptions().position(latLng).title("Tu jesteś"));
                     mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+                    mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
                     //shops(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), true);
                 }
                 return false;
@@ -182,11 +195,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             public boolean onMarkerClick(Marker markerClick) {
                 if(myLocation != null && polyline != null){
                     markerClick.hideInfoWindow();
-                    polyline.remove();
-                    String url = getUrl(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), markerClick.getPosition());
+                    //polyline.remove();
+                    //String url = getUrl(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), markerClick.getPosition());
 
-                    Log.d("onMapClick", url.toString());
-                    road(url, markerClick);
+                    //Log.d("onMapClick", url.toString());
+                   // road(url, markerClick);
                     System.out.println("po  fetch " + actualDistanse);
 
                     //move map camera
@@ -198,7 +211,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void addDrawerItems() {
         System.out.println("addDrawerItems");
-        String[] osArray = {"Szukaj ręcznie", "Zmień jazda samochodem/pieszo", "Lista zakupów"};
+        final ArrayList<String> osArray = new ArrayList<String>();
+        osArray.add("Szukaj ręcznie");
+        osArray.add("Zmień tryb na pieszo");
+        osArray.add("Lista zakupów");
+        final Context context = this;
         mAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, osArray);
         mDrawerList.setAdapter(mAdapter);
         mDrawerList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -208,8 +225,19 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     findViewById(R.id.search).setVisibility(View.VISIBLE);
                     mDrawerLayout.closeDrawer(mDrawerList);
                 } else if (id == 1) {
-                    if(mode.equals("driving")) mode = "walking";
-                    else mode = "driving";
+                    if(mode.equals("driving")) {
+                        osArray.set(1, "Zmień tryb na jazda samochodem");
+                        mAdapter = new ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, osArray);
+                        mDrawerList.setAdapter(mAdapter);
+                        mode = "walking";
+                    }
+                    else{
+                        mode = "driving";
+                        osArray.set(1, "Zmień tryb na pieszo");
+                        mAdapter = new ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, osArray);
+                        mDrawerList.setAdapter(mAdapter);
+                    }
+
                     mDrawerLayout.closeDrawer(mDrawerList);
                 } else if (id == 2) {
                     if(myLocation != null){
@@ -299,6 +327,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     if (marker != null) marker.remove();
                     marker = mMap.addMarker(new MarkerOptions().position(search).title("Tu jestes"));
                     mMap.moveCamera(CameraUpdateFactory.newLatLng(search));
+                    mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
                     //shops(search, true);
                 }
             } catch (IOException e) {
@@ -500,6 +529,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             marker = mMap.addMarker(new MarkerOptions().position(latLng).title("Tu jesteś"));
             //shops(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), true);
             mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+            mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
         }
     }
 
