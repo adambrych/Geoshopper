@@ -83,8 +83,14 @@ public class ShoppingListActivity extends AppCompatActivity {
         longitude = getIntent().getStringExtra("longitude");
         latitude = getIntent().getStringExtra("latitude");
         type = getIntent().getStringExtra("type");
-        if(getIntent().getStringExtra("products")!=null) selectedProducts = (ArrayList<String>) getIntent().getSerializableExtra("products");
-        if(getIntent().getStringExtra("sizes")!=null) selectedSizes = (ArrayList<String>) getIntent().getSerializableExtra("sizes");
+        if((ArrayList<String>) getIntent().getSerializableExtra("products")!=null) {
+            System.out.println("products");
+            selectedProducts = (ArrayList<String>) getIntent().getSerializableExtra("products");
+        }
+        if((ArrayList<String>) getIntent().getSerializableExtra("sizes")!=null){
+            System.out.println("sizes");
+            selectedSizes = (ArrayList<String>) getIntent().getSerializableExtra("sizes");
+        }
         System.out.println("intend " + longitude + " " + latitude + " " + type);
 
         View view = this.getCurrentFocus();
@@ -178,6 +184,7 @@ public class ShoppingListActivity extends AppCompatActivity {
                 intent.putExtra("longitude", longitude);
                 intent.putExtra("latitude", latitude);
                 startActivity(intent);
+                finish();
             }
         });
 

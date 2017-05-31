@@ -1,6 +1,9 @@
 package geoshopper.geoshopper;
 
+import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
@@ -47,13 +50,14 @@ public class SummaryActivity extends AppCompatActivity {
         back.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(SummaryActivity.this, SummaryActivity.class);
+                Intent intent = new Intent(SummaryActivity.this, ShoppingListActivity.class);
                 intent.putExtra("products", products);
                 intent.putExtra("sizes", sizes);
                 intent.putExtra("type", "CHEAPEST");
                 intent.putExtra("longitude", longitude);
                 intent.putExtra("latitude", latitude);
                 startActivity(intent);
+                finish();
             }
         });
 
@@ -79,6 +83,7 @@ public class SummaryActivity extends AppCompatActivity {
                     request.put("products", array);
                     request.put("coords", coords);
                     sendRequestJson(request);
+
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -93,17 +98,30 @@ public class SummaryActivity extends AppCompatActivity {
         latitude = getIntent().getStringExtra("latitude");
         type = getIntent().getStringExtra("type");
 
-        TableLayout ll = (TableLayout) findViewById(R.id.table);
+        final TableLayout ll = (TableLayout) findViewById(R.id.table);
         if (products != null) {
             for (int i = 0; i < products.size(); i++) {
                 String product = products.get(i);
                 String size = sizes.get(i);
 
-                TableRow row = new TableRow(this);
+                final TableRow row = new TableRow(this);
                 TableRow.LayoutParams lp = new TableRow.LayoutParams(width / 3, height / 3);
                 row.setLayoutParams(lp);
                 Button deleteButton = new Button(this);
                 deleteButton.setText("Usuń");
+
+                deleteButton.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        TableRow row = (TableRow) v.getParent();
+                        int index = ll.indexOfChild(row);
+                        System.out.print("row number " + index);
+                        products.remove(index);
+                        sizes.remove(index);
+                        ll.removeViewAt(index);
+                    }
+                });
+
                 TextView qty = new TextView(this);
                 qty.setText(product + " " + size);
                 row.addView(qty);
@@ -120,10 +138,14 @@ public class SummaryActivity extends AppCompatActivity {
         JsonArrayRequest jsonArrayRequest = new JsonArrayRequest(Request.Method.POST, URL, json, new Response.Listener<JSONArray>() {
             @Override
             public void onResponse(JSONArray response) {
-                System.out.println("response" + response.toString());
-                Intent intent = new Intent(SummaryActivity.this, MapsActivity.class);
-                intent.putExtra("jsonArray", response.toString());
-                startActivity(intent);
+
+
+                SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+                SharedPreferences.Editor editor = sharedPreferences.edit();
+                editor.putString("jsonArray", response.toString());
+                editor.commit();
+                finish();
+
             }
         }, new Response.ErrorListener() {
             @Override
