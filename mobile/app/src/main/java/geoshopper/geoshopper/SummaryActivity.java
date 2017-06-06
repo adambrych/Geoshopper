@@ -131,7 +131,7 @@ public class SummaryActivity extends AppCompatActivity {
         }
     }
 
-    void sendRequestJson(JSONObject json) {
+    void sendRequestJson(final JSONObject json) {
         final String URL = "http://192.168.137.1:3000/api/shops";
         final RequestQueue queue = Volley.newRequestQueue(this);
         System.out.println("Request \n" + json.toString());
@@ -143,6 +143,7 @@ public class SummaryActivity extends AppCompatActivity {
                 SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
                 SharedPreferences.Editor editor = sharedPreferences.edit();
                 editor.putString("jsonArray", response.toString());
+                editor.putString("request", json.toString());
                 editor.commit();
                 finish();
 

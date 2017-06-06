@@ -167,6 +167,7 @@ public class ShoppingListActivity extends AppCompatActivity {
                     lv.setAdapter(adapter);
                     selectedProducts.add(product);
                     selectedSizes.add(size);
+                    Toast.makeText(getApplicationContext(), "Dodano", Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -180,7 +181,7 @@ public class ShoppingListActivity extends AppCompatActivity {
                 Intent intent = new Intent(ShoppingListActivity.this, SummaryActivity.class);
                 intent.putExtra("products", selectedProducts);
                 intent.putExtra("sizes", selectedSizes);
-                intent.putExtra("type", "CHEAPEST");
+                intent.putExtra("type", type);
                 intent.putExtra("longitude", longitude);
                 intent.putExtra("latitude", latitude);
                 startActivity(intent);

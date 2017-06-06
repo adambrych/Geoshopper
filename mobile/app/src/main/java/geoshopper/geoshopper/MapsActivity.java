@@ -1,52 +1,46 @@
 package geoshopper.geoshopper;
 
 import android.Manifest;
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.widget.DrawerLayout;
-import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.volley.Cache;
-import com.android.volley.Network;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
-import com.android.volley.toolbox.BasicNetwork;
-import com.android.volley.toolbox.DiskBasedCache;
-import com.android.volley.toolbox.HurlStack;
-import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.google.android.gms.common.ConnectionResult;
@@ -66,16 +60,10 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.logging.Logger;
 
 import com.google.android.gms.location.LocationServices;
 
@@ -95,11 +83,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Location myLocation;
     private LatLng search;
     private int actualDistanse;
-    private Polyline polyline = null;
+    private Polyline polylineSearch = null;
+    private Polyline polylineList = null;
     private String mode = "driving";
     private String type = "CHEAPEST";
     private Boolean list = false;
     private int zoom = 15;
+    private boolean back = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -168,7 +158,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMap.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
             @Override
             public boolean onMyLocationButtonClick() {
-                mMap.clear();
+
                 if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 
                     return false;
@@ -191,17 +181,52 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
             @Override
             public boolean onMarkerClick(Marker markerClick) {
-                if(myLocation != null && polyline != null){
+                if(myLocation != null && polylineSearch != null){
                     markerClick.hideInfoWindow();
-                    if(list == false) {
-                        polyline.remove();
+                        polylineSearch.remove();
+                        polylineSearch = null;
                         String url = getUrl(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), markerClick.getPosition());
 
                         Log.d("onMapClick", url.toString());
                          road(url, markerClick, false);
-                    }
+                }
+                else if(myLocation != null && polylineList != null){
+                    String url = getUrl(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), markerClick.getPosition());
+
+                    Log.d("onMapClick", url.toString());
+                    distance(url, markerClick, false);
                 }
                 return false;
+            }
+        });
+
+        mMap.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
+
+            @Override
+            public View getInfoWindow(Marker arg0) {
+                return null;
+            }
+
+            @Override
+            public View getInfoContents(Marker marker) {
+
+                LinearLayout info = new LinearLayout(getApplicationContext());
+                info.setOrientation(LinearLayout.VERTICAL);
+
+                TextView title = new TextView(getApplicationContext());
+                title.setTextColor(Color.BLACK);
+                title.setGravity(Gravity.CENTER);
+                title.setTypeface(null, Typeface.BOLD);
+                title.setText(marker.getTitle());
+
+                TextView snippet = new TextView(getApplicationContext());
+                snippet.setTextColor(Color.GRAY);
+                snippet.setText(marker.getSnippet());
+
+                info.addView(title);
+                info.addView(snippet);
+
+                return info;
             }
         });
     }
@@ -229,41 +254,52 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         mAdapter = new ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, osArray);
                         mDrawerList.setAdapter(mAdapter);
                         mode = "walking";
+                        if(polylineSearch != null)polylineSearch.remove();
+                        polylineSearch = null;
+                        roadForList();
                     }
                     else{
                         mode = "driving";
                         osArray.set(1, "Zmień tryb na pieszo");
                         mAdapter = new ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, osArray);
                         mDrawerList.setAdapter(mAdapter);
+                        if(polylineSearch != null)polylineSearch.remove();
+                        polylineSearch = null;
+                        roadForList();
                     }
 
                     mDrawerLayout.closeDrawer(mDrawerList);
                 } else if (id == 2) {
                     if(type.equals("CHEAPEST")) {
-                        osArray.set(2, "Zmień trasę na najkrótszą");
-                        mAdapter = new ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, osArray);
-                        mDrawerList.setAdapter(mAdapter);
-                        mode = "walking";
-                    }
-                    else{
-                        mode = "SHORTEST";
                         osArray.set(2, "Zmień trasę na najtańszą");
                         mAdapter = new ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, osArray);
                         mDrawerList.setAdapter(mAdapter);
+                        type = "SHORTEST";
+                        roadForList();
+                    }
+                    else{
+                        type = "CHEAPEST";
+                        osArray.set(2, "Zmień trasę na najkrótszą");
+                        mAdapter = new ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, osArray);
+                        mDrawerList.setAdapter(mAdapter);
+                        roadForList();
                     }
 
                     mDrawerLayout.closeDrawer(mDrawerList);
                 }else if (id == 3) {
                     if(myLocation != null){
+                        back = true;
+                        mDrawerLayout.closeDrawer(mDrawerList);
                         Intent intent = new Intent(MapsActivity.this, ShoppingListActivity.class);
                         intent.putExtra("latitude", String.valueOf(myLocation.getLatitude()));
                         intent.putExtra("longitude", String.valueOf(myLocation.getLongitude()));
-                        intent.putExtra("type", "CHEAPEST");
+                        intent.putExtra("type", type);
                         startActivity(intent);
                     }
                     else{
                         Toast.makeText(getApplicationContext(), "Brak dostępu do internetu", Toast.LENGTH_SHORT).show();
                     }
+
                 }
                 else if(id == 4){
                     if(myLocation!=null) {
@@ -273,6 +309,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     else{
                         Toast.makeText(getApplicationContext(), "Brak dostępu do internetu", Toast.LENGTH_SHORT).show();
                     }
+                    mDrawerLayout.closeDrawer(mDrawerList);
                 }
 
                 //Toast.makeText(MapsActivity.this, "Time for an upgrade!", Toast.LENGTH_SHORT).show();
@@ -344,15 +381,19 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             try {
                 list = false;
                 mMap.clear();
+                if(polylineSearch != null) polylineSearch.remove();
+                polylineSearch = null;
                 addressList = geocoder.getFromLocationName(location, 1);
                 if (addressList.size() > 0) {
                     Address address = addressList.get(0);
                     search = new LatLng(address.getLatitude(), address.getLongitude());
+                    myLocation.setLatitude(address.getLatitude());
+                    myLocation.setLongitude(address.getLongitude());
                     if (marker != null) marker.remove();
                     marker = mMap.addMarker(new MarkerOptions().position(search).title("Tu jestes"));
                     mMap.moveCamera(CameraUpdateFactory.newLatLng(search));
                     mMap.animateCamera(CameraUpdateFactory.zoomTo(zoom));
-                    shops(search, true);
+                    roadForList();
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -367,6 +408,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     public void shops(final LatLng origin, final boolean drawRoad) {
         final RequestQueue queue = Volley.newRequestQueue(this);
+        if(polylineSearch!=null) polylineSearch.remove();
+        polylineSearch = null;
         String url = "http://192.168.137.1:3000/api/shops?latitude=" + origin.latitude + "&longitude=" + origin.longitude;
         //String url = "http://192.168.43.86:3000/api/shops";
 
@@ -409,7 +452,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 }
                                 mMap.addMarker(options);
                             }
-                            if(drawRoad == true) {
+                            if(drawRoad == true && MarkerPoints.size() > 0) {
                                 String url = getUrl(origin, MarkerPoints.get(0));
                                 Log.d("onMapClick", url.toString());
                                road(url, false);
@@ -499,8 +542,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         myLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
 
-        if (myLocation != null) {
+        if (myLocation != null && back == true) {
+            back = false;
             mMap.clear();
+            if(polylineSearch != null) polylineSearch.remove();
+            polylineSearch = null;
             LatLng latLng = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
             if (marker != null) marker.remove();
             marker = mMap.addMarker(new MarkerOptions().position(latLng).title("Tu jesteś"));
@@ -510,6 +556,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             System.out.println("onConnected sadas");
             SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
             String savedPref = sharedPreferences.getString("jsonArray", "");
+            System.out.println("response " + savedPref);
             if(savedPref != null && !savedPref.equals("")){
                 try {
                     System.out.println("jsonArray");
@@ -530,6 +577,21 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         options.position(point);
                         options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
                         options.title(json.getString("name"));
+                        options.snippet(json.getString("city") + " " + json.getString("street"));
+                        options.snippet(options.getSnippet() + "\n" +"Produkty:");
+
+                        JSONArray jsonProducts = json.getJSONArray("products");
+                        Double suma = 0.0;
+                        for(int j=0; j<jsonProducts.length(); j++){
+                            JSONObject product = jsonProducts.getJSONObject(j);
+                            suma += product.getDouble("price");
+                            options.snippet(options.getSnippet() + "\n" +  product.getString("name") + " " + product.getString("size") + " " + product.getString("price") + "zł");
+                        }
+                        options.snippet(options.getSnippet() + "\n" + "Suma: " + suma + "zł");
+
+
+
+
 
                         switch(json.getString("name")){
                             case "Piotr i Paweł":
@@ -593,8 +655,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             System.out.println("przed actualdistance " + actualDistanse);
                             actualDistanse = parser.distance(jObject);
                             System.out.println("po actualdistance " + actualDistanse);
-                            markerClick.setSnippet(markerClick.getSnippet() + " odleglość " + actualDistanse);
-                            markerClick.showInfoWindow();
+
+                            int index = markerClick.getSnippet().indexOf("Odległość");
+                            if(index != -1){
+                                markerClick.setSnippet(markerClick.getSnippet().substring(0, index));
+                                markerClick.setSnippet(markerClick.getSnippet() + "Odległość " + actualDistanse + " metrów");
+                            }
+                            else markerClick.setSnippet(markerClick.getSnippet() + "\n" + "Odległość " + actualDistanse + " metrów");
+
                             Log.d("ParserTask","Executing routes");
                             Log.d("ParserTask",routes.toString());
 
@@ -630,15 +698,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                             }
 
-                            // Drawing polyline in the Google Map for the i-th route
+                            // Drawing polylineSearch in the Google Map for the i-th route
                             if(lineOptions != null) {
-                                polyline = mMap.addPolyline(lineOptions);
+                                if(list == false) polylineSearch = mMap.addPolyline(lineOptions);
+                                else polylineList = mMap.addPolyline(lineOptions);
 
                             }
                             else {
                                 Log.d("onPostExecute","without Polylines drawn");
                             }
-
+                            markerClick.showInfoWindow();
 
                         } catch (Exception e) {
                             Log.d("ParserTask",e.toString());
@@ -711,9 +780,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                             }
 
-                            // Drawing polyline in the Google Map for the i-th route
+                            // Drawing polylineSearch in the Google Map for the i-th route
                             if(lineOptions != null) {
-                                polyline = mMap.addPolyline(lineOptions);
+                                if(list == false) polylineSearch = mMap.addPolyline(lineOptions);
+                                else polylineList = mMap.addPolyline(lineOptions);
 
                             }
                             else {
@@ -761,5 +831,151 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     }
 
+    void roadForList(){
+
+        list=true;
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        String savedPref = sharedPreferences.getString("request", "");
+        if(savedPref !=null && savedPref != "") {
+            if(polylineList!=null) polylineList.remove();
+
+            final String URL = "http://192.168.137.1:3000/api/shops";
+            final RequestQueue queue = Volley.newRequestQueue(this);
+
+            JSONObject json = null;
+            try {
+                json = new JSONObject(savedPref);
+                json.put("type",type);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            System.out.println("Roadforlist Request \n" + json.toString());
+            JsonArrayRequest jsonArrayRequest = new JsonArrayRequest(Request.Method.POST, URL, json, new Response.Listener<JSONArray>() {
+                @Override
+                public void onResponse(JSONArray response) {
+                    try {
+                    LatLng previeus;
+                    LatLng point = null;
+                    MarkerPoints.clear();
+                    for (int i = 0; i < response.length(); i++) {
+                        JSONObject json = null;
+
+                        json = response.getJSONObject(i);
+
+                        JSONObject coords = json.getJSONObject("coords");
+                        previeus = point;
+                        point = new LatLng(coords.getDouble("latitude"), coords.getDouble("longitude"));
+                        MarkerPoints.add(point);
+
+                        // Creating MarkerOptions
+                        MarkerOptions options = new MarkerOptions();
+                        options.position(point);
+                        options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
+                        options.title(json.getString("name"));
+
+                        options.snippet(json.getString("city") + " " + json.getString("street"));
+                        options.snippet(options.getSnippet() + "\n" + "Produkty:");
+
+                        JSONArray jsonProducts = json.getJSONArray("products");
+                        Double suma = 0.0;
+                        for (int j = 0; j < jsonProducts.length(); j++) {
+                            JSONObject product = jsonProducts.getJSONObject(j);
+                            suma += product.getDouble("price");
+                            options.snippet(options.getSnippet() + "\n" + product.getString("name") + " " + product.getString("size") + " " + product.getString("price") + "zł");
+                        }
+                        options.snippet(options.getSnippet() + "\n" + "Suma: " + suma + "zł");
+
+
+                        switch (json.getString("name")) {
+                            case "Piotr i Paweł":
+                                options.icon(BitmapDescriptorFactory.fromResource(R.drawable.piotripawel));
+                                break;
+                            case "Biedronka":
+                                options.icon(BitmapDescriptorFactory.fromResource(R.drawable.biedronka));
+                                break;
+                            case "Społem":
+                                options.icon(BitmapDescriptorFactory.fromResource(R.drawable.spolem));
+                                break;
+                            case "Carrefour":
+                                options.icon(BitmapDescriptorFactory.fromResource(R.drawable.carrefour));
+                                break;
+
+                        }
+                        mMap.addMarker(options);
+                        String url;
+                        if (i == 0)
+                            url = getUrl(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), point);
+                        else url = getUrl(previeus, point);
+                        Log.d("onMapClick", url.toString());
+                        road(url, true);
+
+                    }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    System.out.print("error");
+                }
+            }) {
+            };
+            queue.add(jsonArrayRequest);
+
+        }
+    }
+
+
+    public void distance(String url, final Marker markerClick, final Boolean list){
+        final RequestQueue queue = Volley.newRequestQueue(this);
+        final StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+
+                        JSONObject jObject;
+                        List<List<HashMap<String, String>>> routes = null;
+
+                        try {
+                            jObject = new JSONObject(response);
+                            Log.d("ParserTask",response.toString());
+                            DataParser parser = new DataParser();
+                            Log.d("ParserTask", parser.toString());
+
+                            // Starts parsing data
+                            routes = parser.parse(jObject);
+                            System.out.println("przed actualdistance " + actualDistanse);
+                            actualDistanse = parser.distance(jObject);
+                            System.out.println("po actualdistance " + actualDistanse);
+
+                            int index = markerClick.getSnippet().indexOf("Odległość");
+                            if(index != -1){
+                                markerClick.setSnippet(markerClick.getSnippet().substring(0, index));
+                                markerClick.setSnippet(markerClick.getSnippet() + "Odległość " + actualDistanse + " metrów");
+                            }
+                            else markerClick.setSnippet(markerClick.getSnippet() + "\n" + "Odległość " + actualDistanse + " metrów");
+                            markerClick.showInfoWindow();
+                            Log.d("ParserTask","Executing routes");
+                            Log.d("ParserTask",routes.toString());
+
+
+
+                        } catch (Exception e) {
+                            Log.d("ParserTask",e.toString());
+                            e.printStackTrace();
+                        }
+
+
+                    }
+                }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                System.out.println("error request");
+            }
+        });
+        queue.add(stringRequest);
+    }
 
 }
