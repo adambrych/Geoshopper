@@ -1,6 +1,9 @@
 package geoshopper.geoshopper;
 
+import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
@@ -9,10 +12,12 @@ import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 
+import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.VolleyLog;
+import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 
@@ -29,7 +34,7 @@ public class SummaryActivity extends AppCompatActivity {
 
     ArrayList<String> products;
     ArrayList<String> sizes;
-    String longtitude;
+    String longitude;
     String latitude;
     String type;
 
@@ -45,13 +50,14 @@ public class SummaryActivity extends AppCompatActivity {
         back.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(SummaryActivity.this, SummaryActivity.class);
+                Intent intent = new Intent(SummaryActivity.this, ShoppingListActivity.class);
                 intent.putExtra("products", products);
                 intent.putExtra("sizes", sizes);
                 intent.putExtra("type", "CHEAPEST");
-                intent.putExtra("longtitude", longtitude);
+                intent.putExtra("longitude", longitude);
                 intent.putExtra("latitude", latitude);
                 startActivity(intent);
+                finish();
             }
         });
 
@@ -63,7 +69,7 @@ public class SummaryActivity extends AppCompatActivity {
                 try {
                     JSONObject request = new JSONObject();
                     JSONArray array = new JSONArray();
-                    for(int i=0; i<products.size(); i++){
+                    for (int i = 0; i < products.size(); i++) {
                         JSONObject product = new JSONObject();
                         product.put("name", products.get(i));
                         product.put("size", sizes.get(i));
@@ -72,11 +78,12 @@ public class SummaryActivity extends AppCompatActivity {
 
                     JSONObject coords = new JSONObject();
                     coords.put("latitude", latitude);
-                    coords.put("longtitude", longtitude);
+                    coords.put("longitude", longitude);
                     request.put("type", type);
                     request.put("products", array);
                     request.put("coords", coords);
                     sendRequestJson(request);
+
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -84,24 +91,37 @@ public class SummaryActivity extends AppCompatActivity {
         });
     }
 
-    void PrepareTable(){
+    void PrepareTable() {
         products = (ArrayList<String>) getIntent().getSerializableExtra("products");
         sizes = (ArrayList<String>) getIntent().getSerializableExtra("sizes");
-        longtitude = getIntent().getStringExtra("longtitude");
+        longitude = getIntent().getStringExtra("longitude");
         latitude = getIntent().getStringExtra("latitude");
         type = getIntent().getStringExtra("type");
 
-        TableLayout ll = (TableLayout) findViewById(R.id.table);
-        if(products != null) {
+        final TableLayout ll = (TableLayout) findViewById(R.id.table);
+        if (products != null) {
             for (int i = 0; i < products.size(); i++) {
                 String product = products.get(i);
                 String size = sizes.get(i);
 
-                TableRow row = new TableRow(this);
+                final TableRow row = new TableRow(this);
                 TableRow.LayoutParams lp = new TableRow.LayoutParams(width / 3, height / 3);
                 row.setLayoutParams(lp);
                 Button deleteButton = new Button(this);
                 deleteButton.setText("Usuń");
+
+                deleteButton.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        TableRow row = (TableRow) v.getParent();
+                        int index = ll.indexOfChild(row);
+                        System.out.print("row number " + index);
+                        products.remove(index);
+                        sizes.remove(index);
+                        ll.removeViewAt(index);
+                    }
+                });
+
                 TextView qty = new TextView(this);
                 qty.setText(product + " " + size);
                 row.addView(qty);
@@ -111,29 +131,32 @@ public class SummaryActivity extends AppCompatActivity {
         }
     }
 
-    void sendRequestJson(JSONObject json){
+    void sendRequestJson(JSONObject json) {
         final String URL = "http://192.168.137.1:3000/api/shops";
         final RequestQueue queue = Volley.newRequestQueue(this);
         System.out.println("Request \n" + json.toString());
-        JsonObjectRequest request_json = new JsonObjectRequest(URL, json,
-                new Response.Listener<JSONObject>() {
-                    @Override
-                    public void onResponse(JSONObject response) {
+        JsonArrayRequest jsonArrayRequest = new JsonArrayRequest(Request.Method.POST, URL, json, new Response.Listener<JSONArray>() {
+            @Override
+            public void onResponse(JSONArray response) {
 
-                        System.out.println("Response \n" + response.toString());
-                        Intent intent = new Intent(SummaryActivity.this, SummaryActivity.class);
-                        intent.putExtra("products", response.toString());
-                        startActivity(intent);
 
-                    }
-                }, new Response.ErrorListener() {
+                SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+                SharedPreferences.Editor editor = sharedPreferences.edit();
+                editor.putString("jsonArray", response.toString());
+                editor.commit();
+                finish();
+
+            }
+        }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                VolleyLog.e("Error: ", error.getMessage());
+                System.out.print("error");
             }
-        });
+        }) {
+        };
+        queue.add(jsonArrayRequest);
 
-// add the request object to the queue to be executed
-        queue.add(request_json);
     }
 }
+
+

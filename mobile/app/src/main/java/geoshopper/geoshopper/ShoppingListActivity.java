@@ -6,7 +6,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
@@ -24,10 +23,6 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
-import com.google.android.gms.maps.CameraUpdateFactory;
-import com.google.android.gms.maps.model.BitmapDescriptorFactory;
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.MarkerOptions;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -36,8 +31,6 @@ import org.json.JSONObject;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 
 public class ShoppingListActivity extends AppCompatActivity {
 
@@ -57,7 +50,7 @@ public class ShoppingListActivity extends AppCompatActivity {
     SpinnerAdapter spinnerAdapter;
     ArrayList<String> selectedProducts;
     ArrayList<String> selectedSizes;
-    String longtitude;
+    String longitude;
     String latitude;
     String type;
     String selectedProduct;
@@ -87,12 +80,18 @@ public class ShoppingListActivity extends AppCompatActivity {
         spinnerAdapter = new ArrayAdapter<String>(this, R.layout.list_item, R.id.product_name,sizes);
         spinner.setAdapter(spinnerAdapter);
 
-        longtitude = getIntent().getStringExtra("longtitude");
+        longitude = getIntent().getStringExtra("longitude");
         latitude = getIntent().getStringExtra("latitude");
         type = getIntent().getStringExtra("type");
-        if(getIntent().getStringExtra("products")!=null) selectedProducts = (ArrayList<String>) getIntent().getSerializableExtra("products");
-        if(getIntent().getStringExtra("sizes")!=null) selectedSizes = (ArrayList<String>) getIntent().getSerializableExtra("sizes");
-        System.out.println("intend " + longtitude + " " + latitude + " " + type);
+        if((ArrayList<String>) getIntent().getSerializableExtra("products")!=null) {
+            System.out.println("products");
+            selectedProducts = (ArrayList<String>) getIntent().getSerializableExtra("products");
+        }
+        if((ArrayList<String>) getIntent().getSerializableExtra("sizes")!=null){
+            System.out.println("sizes");
+            selectedSizes = (ArrayList<String>) getIntent().getSerializableExtra("sizes");
+        }
+        System.out.println("intend " + longitude + " " + latitude + " " + type);
 
         View view = this.getCurrentFocus();
         if (view != null) {
@@ -182,9 +181,10 @@ public class ShoppingListActivity extends AppCompatActivity {
                 intent.putExtra("products", selectedProducts);
                 intent.putExtra("sizes", selectedSizes);
                 intent.putExtra("type", "CHEAPEST");
-                intent.putExtra("longtitude", longtitude);
+                intent.putExtra("longitude", longitude);
                 intent.putExtra("latitude", latitude);
                 startActivity(intent);
+                finish();
             }
         });
 

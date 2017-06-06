@@ -24,24 +24,31 @@
          />
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="173dp"
-        android:orientation="horizontal">
+        android:layout_height="0dip"
+        android:layout_weight="1"
+        android:gravity="bottom"
+        android:orientation="horizontal" >
 
         <Button
             android:id="@+id/dodaj"
-            android:layout_width="199dp"
+            android:text="Dodaj"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Dodaj" />
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"
+            android:layout_weight="1" />
 
 
 
         <Button
             android:id="@+id/Podsumowanie"
             android:text="Podsumowanie"
-            android:layout_width="190dp"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_alignParentRight="true"
-             />
+
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"
+            android:layout_weight="1" />
     </LinearLayout>
 
 </LinearLayout>
