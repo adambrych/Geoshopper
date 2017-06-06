@@ -122,6 +122,8 @@ server.post(routes.API_SHOPS, function(req, res) {
                         var result = geolocalizer.getNearest(coords, shopsFromDb);
                         resultList.push({
                             name: shop,
+                            city: result.shop.city,
+                            street: result.shop.street,
                             coords: result.coords,
                             products: shops[shop]
                         });
@@ -173,16 +175,20 @@ server.post(routes.API_SHOPS, function(req, res) {
                         if (missing) {
                             resultList.push({
                                 name: result.shop.name,
+                                city: result.shop.city,
+                                street: result.shop.street,
                                 coords: result.coords,
                                 products: []
                             });
                         }
                         for (var s in resultList) {
                             if (resultList[s].name == result.shop.name) {
-                                resultList[s].products.push({name: productName, size: productSize})
+                                productModel.findOne({shop: result.shop.name, name: productName, size: productSize}, function(err, product) {
+                                    resultList[s].products.push({name: productName, size: productSize, price: product.price});
+                                    callback();
+                                });
                             }
                         }
-                        callback();
                     });
                 }, function(err) {
                     if (err) {
