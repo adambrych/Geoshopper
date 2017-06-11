@@ -84,7 +84,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private LatLng search;
     private int actualDistanse;
     private Polyline polylineSearch = null;
-    private Polyline polylineList = null;
+    private ArrayList<Polyline> polylineList = null;
     private String mode = "driving";
     private String type = "CHEAPEST";
     private Boolean list = false;
@@ -93,6 +93,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        polylineList = new ArrayList<Polyline>();
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
         MarkerPoints = new ArrayList<>();
@@ -190,7 +191,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Log.d("onMapClick", url.toString());
                          road(url, markerClick, false);
                 }
-                else if(myLocation != null && polylineList != null){
+                else if(myLocation != null && polylineList != null && polylineList.size()>0){
                     String url = getUrl(new LatLng(myLocation.getLatitude(), myLocation.getLongitude()), markerClick.getPosition());
 
                     Log.d("onMapClick", url.toString());
@@ -701,7 +702,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             // Drawing polylineSearch in the Google Map for the i-th route
                             if(lineOptions != null) {
                                 if(list == false) polylineSearch = mMap.addPolyline(lineOptions);
-                                else polylineList = mMap.addPolyline(lineOptions);
+                                else{
+                                    Polyline line = mMap.addPolyline(lineOptions);
+                                    polylineList.add(line);
+                                }
 
                             }
                             else {
@@ -783,7 +787,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             // Drawing polylineSearch in the Google Map for the i-th route
                             if(lineOptions != null) {
                                 if(list == false) polylineSearch = mMap.addPolyline(lineOptions);
-                                else polylineList = mMap.addPolyline(lineOptions);
+                                else{
+                                    Polyline line = mMap.addPolyline(lineOptions);
+                                    polylineList.add(line);
+                                }
 
                             }
                             else {
@@ -837,7 +844,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         String savedPref = sharedPreferences.getString("request", "");
         if(savedPref !=null && savedPref != "") {
-            if(polylineList!=null) polylineList.remove();
+            if(polylineList!=null) deletePolylines();
 
             final String URL = "http://192.168.137.1:3000/api/shops";
             final RequestQueue queue = Volley.newRequestQueue(this);
@@ -977,5 +984,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
         queue.add(stringRequest);
     }
+
+    void deletePolylines(){
+        System.out.println("delete polyline " + polylineList.size());
+        for(int i=0; i<polylineList.size(); i++){
+            polylineList.get(i).remove();
+        }
+        System.out.println(polylineList.size());
+        while (polylineList.size()>0) polylineList.remove(0);
+    }
+
 
 }
