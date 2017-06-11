@@ -61,6 +61,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -588,8 +589,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             suma += product.getDouble("price");
                             options.snippet(options.getSnippet() + "\n" +  product.getString("name") + " " + product.getString("size") + " " + product.getString("price") + "zł");
                         }
+                        suma = Math.floor(suma * 100) / 100;
+                        System.out.println("suma " + suma);
                         options.snippet(options.getSnippet() + "\n" + "Suma: " + suma + "zł");
-
 
 
 
@@ -891,6 +893,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             suma += product.getDouble("price");
                             options.snippet(options.getSnippet() + "\n" + product.getString("name") + " " + product.getString("size") + " " + product.getString("price") + "zł");
                         }
+                        suma = Math.floor(suma * 100) / 100;
+                        System.out.println("suma2 " + suma);
                         options.snippet(options.getSnippet() + "\n" + "Suma: " + suma + "zł");
 
 
